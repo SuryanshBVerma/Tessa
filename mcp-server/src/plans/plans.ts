@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { loadMap } from '../context/build.js';
 import type { Plan } from '../schemas/generated/index.js';
+import { mapWarnings } from './map-check.js';
 import {
   artifactsDir,
   checkPlan,
@@ -206,6 +208,8 @@ export interface SaveResult {
   markdown_path: string;
   tests: number;
   warnings: PlanWarning[];
+  /** Whether targets and paths were checked against the frontend map. */
+  checked_against_map: boolean;
   approval: ApprovalState;
 }
 
@@ -217,7 +221,8 @@ export function savePlan(ctx: RunContext, data: unknown): SaveResult {
     throw new RunError(`story id "${storyId}" must be lowercase letters, digits and dashes`);
   }
   const text = planText(plan);
-  const warnings = planWarnings(plan);
+  const map = loadMap(ctx);
+  const warnings = [...planWarnings(plan), ...(map === null ? [] : mapWarnings(plan, map))];
   const file = artifactsDir(ctx, planPath(storyId));
   mkdirSync(dirname(file), { recursive: true });
   writeAtomic(file, text);
@@ -229,6 +234,7 @@ export function savePlan(ctx: RunContext, data: unknown): SaveResult {
     markdown_path: `${root}/plans/${storyId}/plan.md`,
     tests: plan.tests.length,
     warnings,
+    checked_against_map: map !== null,
     approval: approvalState(ctx, storyId),
   };
 }

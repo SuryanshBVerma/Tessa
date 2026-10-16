@@ -2,6 +2,19 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import * as z from 'zod';
 import { AppManager, checkHealth } from './app/lifecycle.js';
+import { buildStaticMap, ContextError, loadMap, requireMap } from './context/build.js';
+import { recordCrawl } from './context/crawl.js';
+import { builtinFreshness, externalFreshness } from './context/freshness.js';
+import { delegateFor, mode, type QueryName } from './context/kg.js';
+import {
+  apiCallsForComponent,
+  componentsForRoute,
+  permissionsForRoute,
+  routesForFeature,
+  selectorsForComponent,
+} from './context/query.js';
+import { storyContext } from './context/story.js';
+import type { FrontendMap } from './context/types.js';
 import { UnsafeDatabaseError } from './db/guard.js';
 import { SeedError, seedProfile, type SeedResult } from './db/seed.js';
 import { detectStack, loadConfig, type ConfigIssue, type ResolvedConfig } from './config/index.js';
@@ -60,6 +73,9 @@ function failure(error: unknown): CallToolResult {
   }
   if (error instanceof UnsafeDatabaseError) {
     return result({ ok: false, refused: true, error: error.message }, true);
+  }
+  if (error instanceof ContextError) {
+    return result({ ok: false, error: error.message }, true);
   }
   if (error instanceof RunError) {
     return result({ ok: false, error: error.message }, true);
@@ -763,6 +779,304 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           approval: approvalState(ctx, story),
           approved_at: readApproval(ctx, story)?.approved_at,
         });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  const contextCtx = () => ({ config: requireConfig(), workspace });
+
+  /**
+   * Answers a context query from the configured source: the built-in map, the team's
+   * knowledge graph (as a call for the agent to make), or both.
+   */
+  const answer = (
+    query: QueryName,
+    inputs: Record<string, string | undefined>,
+    builtin: (map: FrontendMap) => object | null,
+  ): CallToolResult => {
+    const ctx = contextCtx();
+    const source = mode(ctx);
+    const delegate = source === 'builtin' ? null : delegateFor(ctx, query, inputs);
+    if (source === 'external' && delegate !== null) {
+      return result({ ok: true, source: 'external', delegate });
+    }
+    const map = loadMap(ctx);
+    if (map === null) {
+      throw new ContextError('no frontend map yet; call build_static_map first');
+    }
+    const found = builtin(map);
+    if (found === null) {
+      return result(
+        {
+          ok: false,
+          source: 'builtin',
+          error: `nothing in the frontend map matches ${JSON.stringify(inputs)}`,
+        },
+        true,
+      );
+    }
+    return result({
+      ok: true,
+      source: source === 'hybrid' && delegate !== null ? 'hybrid' : 'builtin',
+      ...found,
+      ...(source === 'hybrid' && delegate !== null
+        ? {
+            delegate: {
+              ...delegate,
+              instruction: `${delegate.instruction} Prefer its answer where both have one; the built-in result fills gaps.`,
+            },
+          }
+        : {}),
+      ...(source === 'external'
+        ? { note: `${query} is not in the query mapping; answered from the built-in map.` }
+        : {}),
+    });
+  };
+
+  server.registerTool(
+    'build_static_map',
+    {
+      title: 'Build the frontend map',
+      description:
+        'Read the app source with the stack adapter (routes, components, permission guards, links, API calls, feature flags, test ids, roles and labels) and write context/frontend-map.json and .md. Incremental: only changed files are re-parsed. Never executes app code.',
+      inputSchema: { force: z.boolean().optional().describe('Re-parse every file.') },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ force }) => {
+      try {
+        return result({
+          ok: true,
+          ...(await buildStaticMap(contextCtx(), { force: force === true })),
+        });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'context_freshness',
+    {
+      title: 'Context freshness',
+      description:
+        'Whether the context source is current: for the built-in map, mapped files that changed and commits since it was built; for an external knowledge graph, how far its indexed commit lags HEAD (pass external_indexed_commit, or follow the returned delegate to get it).',
+      inputSchema: {
+        external_indexed_commit: z
+          .string()
+          .regex(/^[0-9a-f]{7,40}$/)
+          .optional(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async ({ external_indexed_commit }) => {
+      try {
+        const ctx = contextCtx();
+        const source = mode(ctx);
+        if (source !== 'builtin') {
+          if (external_indexed_commit !== undefined) {
+            return result({ ok: true, ...(await externalFreshness(ctx, external_indexed_commit)) });
+          }
+          const delegate = delegateFor(ctx, 'freshness', {});
+          if (delegate !== null) {
+            return result({
+              ok: true,
+              source: 'external',
+              delegate,
+              builtin: await builtinFreshness(ctx),
+            });
+          }
+        }
+        return result({ ok: true, ...(await builtinFreshness(ctx)) });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  const routeArg = z
+    .string()
+    .min(1)
+    .describe(
+      'A route path such as /tickets/:ticketId, a URL path such as /tickets/4, or a route module file.',
+    );
+  const fileArg2 = z.string().min(1).describe('A module file, relative to the workspace.');
+  const readOnly = { readOnlyHint: true, openWorldHint: false } as const;
+
+  server.registerTool(
+    'routes_for_feature',
+    {
+      title: 'Routes for a feature',
+      description:
+        'Routes most related to a feature or story text, ranked, with the reasons for each match.',
+      inputSchema: { query: z.string().min(1).max(2000) },
+      annotations: readOnly,
+    },
+    ({ query }) => {
+      try {
+        return answer('routes_for_feature', { query }, (map) => ({
+          routes: routesForFeature(map, query),
+        }));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'components_for_route',
+    {
+      title: 'Components for a route',
+      description:
+        'The modules that render a route: its layouts, its own module, their local imports, and child routes.',
+      inputSchema: { route: routeArg },
+      annotations: readOnly,
+    },
+    ({ route }) => {
+      try {
+        return answer('components_for_route', { route }, (map) => componentsForRoute(map, route));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'permissions_for_route',
+    {
+      title: 'Permissions for a route',
+      description:
+        'Permission guards on a route: enforced ones (require* calls in loaders and actions, which refuse the request) and visibility ones (can() and similar, which hide or show controls).',
+      inputSchema: { route: routeArg },
+      annotations: readOnly,
+    },
+    ({ route }) => {
+      try {
+        return answer('permissions_for_route', { route }, (map) => permissionsForRoute(map, route));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'api_calls_for_component',
+    {
+      title: 'API calls for a component',
+      description:
+        'Data functions (loader, action) and API calls (fetch, HTTP clients, forms) of a route or module.',
+      inputSchema: { route: routeArg.optional(), file: fileArg2.optional() },
+      annotations: readOnly,
+    },
+    ({ route, file }) => {
+      try {
+        return answer('api_calls_for_component', { route, file }, (map) =>
+          apiCallsForComponent(map, {
+            ...(route === undefined ? {} : { route }),
+            ...(file === undefined ? {} : { file }),
+          }),
+        );
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'selectors_for_component',
+    {
+      title: 'Selectors for a component',
+      description:
+        'Test ids, ARIA roles, labels, placeholders and visible texts in a route (with its layouts) or a module, most stable first, with file and line.',
+      inputSchema: { route: routeArg.optional(), file: fileArg2.optional() },
+      annotations: readOnly,
+    },
+    ({ route, file }) => {
+      try {
+        return answer('selectors_for_component', { route, file }, (map) =>
+          selectorsForComponent(map, {
+            ...(route === undefined ? {} : { route }),
+            ...(file === undefined ? {} : { file }),
+          }),
+        );
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'story_context',
+    {
+      title: 'Story-scoped context',
+      description:
+        'The part of the frontend map a story is about: routes matching its terms, routes whose files changed on this branch, and routes one or two links away, each with guards, selectors, links and flags. Give the planner this instead of the whole codebase.',
+      inputSchema: {
+        text: z.string().min(1).max(10000).describe('The story text, or its key terms.'),
+        base: z
+          .string()
+          .regex(/^[A-Za-z0-9._/-]+$/)
+          .optional()
+          .describe('Branch to diff against; defaults to develop, then main.'),
+        hops: z.number().int().min(0).max(2).optional(),
+      },
+      annotations: readOnly,
+    },
+    async ({ text, base, hops }) => {
+      try {
+        const ctx = contextCtx();
+        const map = requireMap(ctx);
+        const context = await storyContext(map, workspace, {
+          text,
+          ...(base === undefined ? {} : { base }),
+          ...(hops === undefined ? {} : { hops }),
+        });
+        return result({ ok: true, freshness: await builtinFreshness(ctx), ...context });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  const crawlText = z.string().max(300);
+  server.registerTool(
+    'record_crawl',
+    {
+      title: 'Record a runtime crawl',
+      description:
+        "Save what one persona saw while you crawled the app in the host browser: each page's path, title, link targets, data-testid values and ARIA roles. Merges into context/runtime-map.json and reports routes nobody reached, pages the code does not define, and test ids seen only at runtime. Off-origin URLs are dropped.",
+      inputSchema: {
+        persona: z.string().min(1),
+        pages: z
+          .array(
+            z.object({
+              path: z.string().min(1).max(2000),
+              title: crawlText.optional(),
+              links: z.array(z.string().max(2000)).max(500).default([]),
+              testids: z.array(crawlText).max(500).default([]),
+              roles: z.array(crawlText).max(500).default([]),
+            }),
+          )
+          .min(1)
+          .max(200),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ persona, pages }) => {
+      try {
+        const crawl = recordCrawl(
+          contextCtx(),
+          persona,
+          pages.map((p) => ({
+            path: p.path,
+            ...(p.title === undefined ? {} : { title: p.title }),
+            links: p.links,
+            testids: p.testids,
+            roles: p.roles,
+          })),
+        );
+        return result({ ok: true, ...crawl });
       } catch (error) {
         return failure(error);
       }
