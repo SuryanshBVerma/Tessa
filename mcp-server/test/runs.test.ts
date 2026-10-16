@@ -337,6 +337,12 @@ describe('overlaps', () => {
     expect(result.get('c')).toEqual([]);
   });
 
+  it('never links tests for different personas', () => {
+    const a = t('a', ['1', '2']);
+    const b = { ...t('b', ['1', '2']), persona: 'other' };
+    expect(overlaps([a, b] as any).get('a')).toEqual([]);
+  });
+
   it('ignores step descriptions when comparing', () => {
     const a = t('a', ['1', '2']);
     const b = t('b', ['1', '2']);
