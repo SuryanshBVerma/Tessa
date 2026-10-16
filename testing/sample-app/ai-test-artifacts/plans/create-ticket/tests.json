@@ -1,0 +1,186 @@
+{
+  "version": 1,
+  "story": {
+    "id": "create-ticket",
+    "title": "Editors can create tickets; viewers cannot",
+    "source": "hand-written for Tessa Phase 3",
+    "acceptance_criteria": [
+      {
+        "id": "ac-1",
+        "text": "An editor can create a ticket with a title and priority."
+      },
+      {
+        "id": "ac-2",
+        "text": "A title shorter than 3 characters is rejected with a message."
+      },
+      {
+        "id": "ac-3",
+        "text": "A viewer does not see the New ticket link and gets 403 on /tickets/new."
+      }
+    ]
+  },
+  "tests": [
+    {
+      "id": "editor-creates-ticket",
+      "name": "Editor creates a high-priority ticket",
+      "intent": "Proves an editor can create a ticket and lands on its detail page.",
+      "criteria": ["ac-1"],
+      "persona": "editor",
+      "tags": ["happy-path"],
+      "preconditions": {
+        "seed_profile": "default",
+        "feature_flags": {
+          "ticket_priority": true
+        },
+        "start_path": "/tickets"
+      },
+      "steps": [
+        {
+          "action": "click",
+          "description": "Click New ticket",
+          "target": {
+            "strategy": "testid",
+            "value": "create-ticket"
+          }
+        },
+        {
+          "action": "fill",
+          "description": "Enter a title",
+          "target": {
+            "strategy": "label",
+            "value": "Title"
+          },
+          "value": "Export button is misaligned"
+        },
+        {
+          "action": "select",
+          "description": "Choose high priority",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-priority"
+          },
+          "value": "high"
+        },
+        {
+          "action": "click",
+          "description": "Submit the form",
+          "target": {
+            "strategy": "role",
+            "role": "button",
+            "name": "Create ticket"
+          }
+        },
+        {
+          "action": "assert",
+          "description": "The ticket detail page opens",
+          "assertion": {
+            "kind": "url-matches",
+            "expected": "^/tickets/[0-9]+$"
+          },
+          "expected": "URL is /tickets/<id>"
+        },
+        {
+          "action": "assert",
+          "description": "Priority shows high",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-priority-value"
+          },
+          "assertion": {
+            "kind": "text-equals",
+            "expected": "high"
+          }
+        }
+      ]
+    },
+    {
+      "id": "short-title-rejected",
+      "name": "Short title is rejected",
+      "intent": "Proves a title under 3 characters is rejected with a visible validation message.",
+      "criteria": ["ac-2"],
+      "persona": "editor",
+      "preconditions": {
+        "seed_profile": "default"
+      },
+      "steps": [
+        {
+          "action": "navigate",
+          "description": "Open the new ticket form",
+          "value": "/tickets/new"
+        },
+        {
+          "action": "fill",
+          "description": "Enter a two-character title",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-title"
+          },
+          "value": "ab"
+        },
+        {
+          "action": "click",
+          "description": "Submit the form",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-submit"
+          }
+        },
+        {
+          "action": "assert",
+          "description": "The title error message is shown",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-title-error"
+          },
+          "assertion": {
+            "kind": "text-contains",
+            "expected": "between 3 and 120"
+          },
+          "expected": "\"Title must be between 3 and 120 characters.\" is shown"
+        }
+      ]
+    },
+    {
+      "id": "viewer-cannot-create",
+      "name": "Viewer cannot open the new ticket form",
+      "intent": "Proves the create permission is enforced in navigation and on the server.",
+      "criteria": ["ac-3"],
+      "persona": "viewer",
+      "preconditions": {
+        "seed_profile": "default",
+        "start_path": "/tickets"
+      },
+      "steps": [
+        {
+          "action": "assert",
+          "description": "No New ticket link in the navigation",
+          "target": {
+            "strategy": "testid",
+            "value": "nav-new-ticket"
+          },
+          "assertion": {
+            "kind": "count-equals",
+            "expected": 0
+          }
+        },
+        {
+          "action": "navigate",
+          "description": "Go to the form directly",
+          "value": "/tickets/new"
+        },
+        {
+          "action": "assert",
+          "description": "A permission error is shown",
+          "target": {
+            "strategy": "role",
+            "role": "alert"
+          },
+          "assertion": {
+            "kind": "text-contains",
+            "expected": "permission"
+          }
+        }
+      ]
+    }
+  ]
+}

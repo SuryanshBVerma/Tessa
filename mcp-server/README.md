@@ -17,8 +17,11 @@ agents and skills call these tools instead of running shell commands or editing 
 | `seed_db`           | no (destructive) | Applies a seed profile's listed `.sql` files in one transaction. Refuses any host that is not local and in `db.allowed_hosts`; reads the URL from `db.url_env` and never returns it |
 | `reset_db`          | no (destructive) | Re-applies the given profile, else the last one seeded, else `default`                                                                                                              |
 | `capture_env_state` | yes              | Persona, seed profile, app URL and Git commit/branch/dirty state, merged with what the executor observed in the app                                                                 |
+| `begin_run`         | no               | Creates `runs/<run_id>/` for an approved plan and returns its tests with indexed steps                                                                                              |
+| `record_step`       | no               | Records one step's outcome and copies in its screenshot (PNG, JPEG or WebP only, checked by content)                                                                                |
+| `write_results`     | no               | Builds `results.json`; status, failures, attempts and quality signals are computed from the recorded steps                                                                          |
 
-Later phases add results, review, runs and export tools
+Later phases add review, run diff and export tools
 (see [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)).
 
 ## Run it

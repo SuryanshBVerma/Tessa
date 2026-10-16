@@ -54,7 +54,7 @@ Stack adapters are the main extension point: an adapter skill plus an extractor 
 | App lifecycle      | `start_app`, `stop_app`, `health_check`                                                                                                                              |
 | Database           | `seed_db(profile)`, `reset_db` — allowlisted scripts only, local hosts only                                                                                          |
 | Context            | `build_static_map`, `context_freshness`, `routes_for_feature`, `components_for_route`, `permissions_for_route`, `api_calls_for_component`, `selectors_for_component` |
-| Evidence & results | `capture_env_state`, `record_step`, `write_results`                                                                                                                  |
+| Evidence & results | `begin_run`, `capture_env_state`, `record_step`, `write_results`                                                                                                     |
 | Review             | `render_report`, `serve_review`, `get_selection`, `stop_review`                                                                                                      |
 | Runs               | `list_runs`, `diff_runs`, `failed_test_ids`                                                                                                                          |
 | Export             | `emit_tests(selection, target)`, `validate_export`                                                                                                                   |
@@ -149,14 +149,15 @@ host model. If the host lacks per-agent models, everything inherits and the repo
 
 ## 11. Commands
 
-| Command                          | Action                                                               |
-| -------------------------------- | -------------------------------------------------------------------- |
-| `/tessa-init`                    | Scaffold config, detect stack, write model settings into agent files |
-| `/tessa-refresh-context`         | Rebuild the frontend map and run the crawl                           |
-| `/tessa-test-story <id or text>` | Full flow (section 1)                                                |
-| `/tessa-rerun-failed [run]`      | Rerun failed tests only                                              |
-| `/tessa-diff <runA> <runB>`      | Compare two runs                                                     |
-| `/tessa-export [run]`            | Open review and export selected tests                                |
+| Command                            | Action                                                               |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| `/tessa-init`                      | Scaffold config, detect stack, write model settings into agent files |
+| `/tessa-refresh-context`           | Rebuild the frontend map and run the crawl                           |
+| `/tessa-test-story <id or text>`   | Full flow (section 1)                                                |
+| `/tessa-run <story> [test-id ...]` | Run an approved plan without replanning                              |
+| `/tessa-rerun-failed [run]`        | Rerun failed tests only                                              |
+| `/tessa-diff <runA> <runB>`        | Compare two runs                                                     |
+| `/tessa-export [run]`              | Open review and export selected tests                                |
 
 ## 12. Schemas
 

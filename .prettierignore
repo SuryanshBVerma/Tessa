@@ -9,3 +9,8 @@ package-lock.json
 **/.react-router/
 **/src/schemas/generated/*.ts
 !**/src/schemas/generated/index.ts
+
+# Tessa run output (gitignored per workspace)
+**/ai-test-artifacts/runs/
+**/ai-test-artifacts/diffs/
+**/ai-test-artifacts/.session/

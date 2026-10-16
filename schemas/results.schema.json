@@ -57,10 +57,14 @@
     "runEnvironment": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["app_url", "commit", "host"],
+      "required": ["app_url", "host"],
       "properties": {
         "app_url": { "type": "string" },
-        "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+        "commit": {
+          "description": "HEAD commit; absent when the workspace is not a Git repository.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$"
+        },
         "branch": { "type": "string" },
         "dirty": {
           "description": "True when the working tree had uncommitted changes.",
