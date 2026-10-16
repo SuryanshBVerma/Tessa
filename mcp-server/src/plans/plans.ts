@@ -21,7 +21,7 @@ export interface PlanWarning {
 export interface Approval {
   version: 1;
   story_id: string;
-  /** SHA-256 of tests.json as approved. Any later edit makes the approval stale. */
+  /** SHA-256 of tests.json's content (canonical JSON) as approved. Any later edit to a value makes the approval stale. */
   plan_sha256: string;
   approved_at: string;
   /** How approval was given. Always the user, in the chat with the agent. */
@@ -35,9 +35,32 @@ function approvalPath(storyId: string): string {
   return `plans/${storyId}/approval.json`;
 }
 
-/** Hash of the plan file, ignoring line-ending differences between checkouts. */
+/** JSON with object keys sorted at every level, so equal content always serialises the same. */
+export function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).join(',')}]`;
+  }
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    );
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
+ * Hash of the plan's content. Formatting (a formatter rewrapping arrays, line endings, key
+ * order) never changes it, so approvals survive a repository's formatter; any changed value does.
+ */
 export function planHash(text: string): string {
-  return createHash('sha256').update(text.replaceAll('\r\n', '\n'), 'utf8').digest('hex');
+  let content: string;
+  try {
+    content = canonicalJson(JSON.parse(text));
+  } catch {
+    content = text.replaceAll('\r\n', '\n');
+  }
+  return createHash('sha256').update(content, 'utf8').digest('hex');
 }
 
 export function planText(plan: Plan.TestPlan): string {

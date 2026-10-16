@@ -137,6 +137,25 @@ describe('plan approval gate', () => {
     expect((await call(client, 'save_plan', { plan: edited })).data.approval).toBe('stale');
   });
 
+  it('survives a formatter rewriting tests.json, but not a changed value', async () => {
+    const workspace = fixture();
+    const client = await connect(workspace);
+    await call(client, 'save_plan', { plan: PLAN });
+    await call(client, 'approve_plan', { story: 'create-ticket' });
+    // Compact, re-ordered keys, as a formatter or another tool might write it.
+    const reordered = { tests: PLAN.tests, story: PLAN.story, version: PLAN.version };
+    writeFileSync(planFile(workspace), JSON.stringify(reordered));
+    expect((await call(client, 'plan_status', { story: 'create-ticket' })).data.approval).toBe(
+      'approved',
+    );
+    const changed = structuredClone(reordered);
+    changed.tests[0].steps[1].value = 'Different title';
+    writeFileSync(planFile(workspace), JSON.stringify(changed, null, 4));
+    expect((await call(client, 'plan_status', { story: 'create-ticket' })).data.approval).toBe(
+      'stale',
+    );
+  });
+
   it('ignores line-ending differences when checking approval', async () => {
     const workspace = fixture();
     const client = await connect(workspace);
