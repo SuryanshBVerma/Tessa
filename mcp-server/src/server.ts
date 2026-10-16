@@ -32,6 +32,7 @@ import {
 } from './plans/plans.js';
 import { loadResults, renderReport } from './report/render.js';
 import { buildSelection, readSelection, ReviewServer, writeSelection } from './report/server.js';
+import { failedTests, listRuns, resolveCompleteRun } from './runs/history.js';
 import { buildResults } from './runs/results.js';
 import { importScreenshot } from './runs/screenshots.js';
 import {
@@ -430,33 +431,59 @@ export function createServer({ workspace }: ServerOptions): McpServer {
     {
       title: 'Begin a run',
       description:
-        'Start a run of an approved plan (plans/<story>/tests.json under the artifacts root). Refuses a plan that is not approved or changed since approval. Creates runs/<run_id>/ and returns the run id and the tests to execute, with their steps indexed from 0.',
+        'Start a run of an approved plan (plans/<story>/tests.json under the artifacts root). Refuses a plan that is not approved or changed since approval. Creates runs/<run_id>/ and returns the run id and the tests to execute, with their steps indexed from 0. With rerun_of, reruns the failed and errored tests of that run (or test_ids, which must belong to it) and links the new run to it.',
       inputSchema: {
         story: z.string().min(1).describe('Story id: the folder name under plans/.'),
         test_ids: z.array(z.string().min(1)).min(1).optional().describe('Run only these tests.'),
+        rerun_of: z
+          .string()
+          .optional()
+          .describe('A completed run of the same story whose failed tests to rerun.'),
         host: hostEnum.optional().describe('The agent host running this session.'),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
-    async ({ story, test_ids, host }) => {
+    async ({ story, test_ids, rerun_of, host }) => {
       try {
         const config = requireConfig();
         const ctx = { config, workspace };
         const plan = loadPlan(ctx, story);
         requireApproved(ctx, story);
+        let ids = test_ids;
+        if (rerun_of !== undefined) {
+          const original = resolveCompleteRun(ctx, rerun_of, story);
+          const inOriginal = new Set(original.tests.map((t) => t.test_id));
+          const outside = (ids ?? []).filter((id) => !inOriginal.has(id));
+          if (outside.length > 0) {
+            throw new RunError(`run ${rerun_of} did not run: ${outside.join(', ')}`);
+          }
+          ids ??= failedTests(original).map((t) => t.test_id);
+          if (ids.length === 0) {
+            throw new RunError(`run ${rerun_of} has no failed or errored tests to rerun`);
+          }
+          const inPlan = new Set(plan.tests.map((t) => t.id));
+          const dropped = ids.filter((id) => !inPlan.has(id));
+          if (dropped.length > 0) {
+            throw new RunError(
+              `the plan no longer has ${dropped.join(', ')}; pass test_ids to rerun the others`,
+            );
+          }
+        }
         const git = await readGitState(workspace);
         const { state, tests } = createRun(
           ctx,
           plan,
           { app_url: config.app.url, ...(git ?? {}) },
           {
-            ...(test_ids === undefined ? {} : { testIds: test_ids }),
+            ...(ids === undefined ? {} : { testIds: ids }),
             ...(host === undefined ? {} : { host }),
+            ...(rerun_of === undefined ? {} : { rerunOf: rerun_of }),
           },
         );
         return result({
           ok: true,
           run_id: state.run_id,
+          ...(rerun_of === undefined ? {} : { rerun_of }),
           run_dir: `${config.artifacts.root}/runs/${state.run_id}`,
           story: plan.story,
           app_url: config.app.url,
@@ -571,6 +598,63 @@ export function createServer({ workspace }: ServerOptions): McpServer {
             status: t.status,
             ...(t.failure === undefined ? {} : { failure: t.failure }),
           })),
+        });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'list_runs',
+    {
+      title: 'List runs',
+      description:
+        'List runs under the artifacts root, newest first, with their story, state (complete or in-progress), commit, summary and the run they reran, if any.',
+      inputSchema: {
+        story: z.string().min(1).optional().describe('Only runs of this story.'),
+        limit: z.number().int().min(1).max(200).optional().describe('Defaults to 20.'),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    ({ story, limit }) => {
+      try {
+        const ctx = { config: requireConfig(), workspace };
+        const runs = listRuns(ctx, {
+          limit: limit ?? 20,
+          ...(story === undefined ? {} : { story }),
+        });
+        return result({ ok: true, runs });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'failed_test_ids',
+    {
+      title: 'Failed tests of a run',
+      description:
+        'The failed and errored tests of a completed run (default: the newest complete run, of the story when given), with the failing step, message and any triage. Pass the run id to begin_run as rerun_of to rerun them.',
+      inputSchema: {
+        run_id: z.string().optional(),
+        story: z.string().min(1).optional(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    ({ run_id, story }) => {
+      try {
+        const ctx = { config: requireConfig(), workspace };
+        const results = resolveCompleteRun(ctx, run_id, story);
+        const failed = failedTests(results);
+        return result({
+          ok: true,
+          run_id: results.run_id,
+          story_id: results.story_id,
+          ...(results.rerun_of === undefined ? {} : { rerun_of: results.rerun_of }),
+          test_ids: failed.map((t) => t.test_id),
+          failed,
         });
       } catch (error) {
         return failure(error);

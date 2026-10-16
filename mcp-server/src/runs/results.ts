@@ -32,7 +32,6 @@ function statusOf(steps: readonly StepRecord[], planSteps: number): TestStatus {
   return 'error';
 }
 
-/** high: test IDs and roles only; medium: labels or placeholders; low: CSS or visible text. */
 /** One string per step that identifies what it does, for comparing tests. */
 function stepSignature(step: Plan.Step): string {
   const target =
@@ -73,6 +72,7 @@ export function overlaps(tests: readonly Plan.Test[]): Map<string, string[]> {
   return result;
 }
 
+/** high: test IDs and roles only; medium: labels or placeholders; low: CSS or visible text. */
 export function selectorStability(test: Plan.Test): 'high' | 'medium' | 'low' {
   const strategies = test.steps.flatMap((step) =>
     step.target === undefined ? [] : [step.target.strategy],
@@ -172,6 +172,7 @@ export function buildResults(
     run_id: state.run_id,
     story_id: state.story_id,
     plan: state.plan,
+    ...(state.rerun_of === undefined ? {} : { rerun_of: state.rerun_of }),
     started_at: state.started_at,
     finished_at: finishedAt.toISOString(),
     environment: { ...state.environment, host: state.host },
