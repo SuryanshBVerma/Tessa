@@ -35,6 +35,7 @@ function fixture(plan = PLAN) {
 
 async function begin(workspace: string, args: Record<string, unknown> = {}) {
   const client = await connect(workspace);
+  await call(client, 'approve_plan', { story: 'create-ticket' });
   const begun = await call(client, 'begin_run', {
     story: 'create-ticket',
     host: 'claude-code',
@@ -79,6 +80,7 @@ describe('begin_run', () => {
     [{ story: 'create-ticket', test_ids: ['nope'] }, /plan has no tests: nope/],
   ])('refuses %j', async (args, message) => {
     const client = await connect(fixture());
+    await call(client, 'approve_plan', { story: 'create-ticket' });
     const { isError, data } = await call(client, 'begin_run', args);
     expect(isError).toBe(true);
     expect(data.error).toMatch(message);
@@ -333,6 +335,12 @@ describe('overlaps', () => {
     expect(result.get('a')).toEqual(['b']);
     expect(result.get('b')).toEqual(['a']);
     expect(result.get('c')).toEqual([]);
+  });
+
+  it('never links tests for different personas', () => {
+    const a = t('a', ['1', '2']);
+    const b = { ...t('b', ['1', '2']), persona: 'other' };
+    expect(overlaps([a, b] as any).get('a')).toEqual([]);
   });
 
   it('ignores step descriptions when comparing', () => {

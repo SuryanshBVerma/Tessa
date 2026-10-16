@@ -14,48 +14,51 @@
     </style>
   </head>
   <body>
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">Tessa report</p>
+    <div class="page">
+      <header class="header">
+        <p class="eyebrow">Tessa test report</p>
         <h1 id="story-title"></h1>
-        <p class="meta" id="run-meta"></p>
-      </div>
-      <dl class="summary" id="summary" aria-label="Summary"></dl>
-    </header>
+        <p class="run-meta" id="run-meta"></p>
+        <div class="stats" id="stats" role="list" aria-label="Summary"></div>
+      </header>
 
-    <section class="toolbar" aria-label="Filters">
-      <label
-        >Status
-        <select id="filter-status"></select
-      ></label>
-      <label
-        >Persona
-        <select id="filter-persona"></select
-      ></label>
-      <label
-        >Story
-        <select id="filter-story"></select
-      ></label>
-      <button type="button" id="select-passing">Select all passing</button>
-      <button type="button" id="select-none">Clear selection</button>
-      <span class="toolbar-note" id="visible-count" aria-live="polite"></span>
-    </section>
+      <nav class="toolbar" aria-label="Filters">
+        <div class="segmented" id="status-filter" role="group" aria-label="Filter by status"></div>
+        <div class="toolbar-right">
+          <label class="select-label" id="persona-wrap">
+            <span class="visually-hidden">Persona</span>
+            <select id="filter-persona"></select>
+          </label>
+          <button type="button" class="link-button" id="select-passing">Select passing</button>
+          <button type="button" class="link-button" id="select-none" hidden>Clear</button>
+        </div>
+      </nav>
 
-    <main id="cards" aria-label="Tests"></main>
+      <main class="list" id="cards" aria-label="Tests"></main>
+      <p class="empty" id="empty" hidden>No tests match these filters.</p>
+    </div>
 
     <footer class="footer" aria-label="Selection">
-      <span id="selected-count">0 selected</span>
-      <span class="footer-target" id="export-target"></span>
-      <button type="button" class="primary" id="export" disabled>Export selected</button>
+      <div class="footer-inner">
+        <span class="footer-count" id="selected-count">No tests selected</span>
+        <span class="footer-target" id="export-target"></span>
+        <button type="button" class="button-primary" id="export" disabled>Export</button>
+      </div>
     </footer>
 
-    <dialog id="dialog" aria-labelledby="dialog-title">
+    <dialog class="lightbox" id="lightbox" aria-label="Screenshot">
+      <img id="lightbox-image" alt="" />
+      <p class="lightbox-caption" id="lightbox-caption"></p>
+      <button type="button" class="lightbox-close" id="lightbox-close" aria-label="Close">×</button>
+    </dialog>
+
+    <dialog class="modal" id="dialog" aria-labelledby="dialog-title">
       <h2 id="dialog-title"></h2>
       <p id="dialog-body"></p>
       <textarea id="dialog-text" rows="8" readonly hidden></textarea>
-      <div class="dialog-actions">
-        <button type="button" id="dialog-copy" hidden>Copy</button>
-        <button type="button" id="dialog-close">Close</button>
+      <div class="modal-actions">
+        <button type="button" class="button" id="dialog-copy" hidden>Copy</button>
+        <button type="button" class="button-primary" id="dialog-close">Done</button>
       </div>
     </dialog>
 

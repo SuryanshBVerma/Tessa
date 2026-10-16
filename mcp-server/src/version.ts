@@ -1,3 +1,3 @@
 export const SERVER_NAME = 'tessa-mcp';
 // Keep in step with mcp-server/package.json; a test checks this.
-export const SERVER_VERSION = '0.4.0';
+export const SERVER_VERSION = '0.5.0';

@@ -35,6 +35,7 @@ async function finishedRun() {
   });
   writeFileSync(join(workspace, 'shot.png'), PNG);
   const client = await connect(workspace);
+  await call(client, 'approve_plan', { story: 'create-ticket' });
   const runId = (await call(client, 'begin_run', { story: 'create-ticket' })).data.run_id as string;
   for (let i = 0; i < 3; i++) {
     await call(client, 'record_step', {

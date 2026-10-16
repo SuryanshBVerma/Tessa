@@ -1,0 +1,208 @@
+{
+  "version": 1,
+  "story": {
+    "id": "manage-roles",
+    "title": "Manage user roles",
+    "source": "stories/manage-roles.md",
+    "acceptance_criteria": [
+      {
+        "id": "ac-1",
+        "text": "An admin can change another user's role from the Users page, and the new role is kept after the page reloads."
+      },
+      {
+        "id": "ac-2",
+        "text": "An admin cannot change their own role; the controls for their own row are disabled."
+      },
+      {
+        "id": "ac-3",
+        "text": "Editors and viewers do not see the Users link and get 403 on /admin/users."
+      }
+    ]
+  },
+  "tests": [
+    {
+      "id": "admin-changes-role",
+      "name": "Admin promotes a viewer to editor",
+      "intent": "Proves an admin can change another user's role and the change is saved, not just shown.",
+      "criteria": ["ac-1"],
+      "persona": "admin",
+      "tags": ["happy-path"],
+      "preconditions": {
+        "seed_profile": "admin-heavy",
+        "start_path": "/admin/users"
+      },
+      "steps": [
+        {
+          "action": "select",
+          "description": "Set the viewer's role to editor",
+          "target": {
+            "strategy": "testid",
+            "value": "role-select-viewer"
+          },
+          "value": "editor"
+        },
+        {
+          "action": "click",
+          "description": "Save the viewer's role",
+          "target": {
+            "strategy": "testid",
+            "value": "role-save-viewer"
+          }
+        },
+        {
+          "action": "navigate",
+          "description": "Reload the Users page",
+          "value": "/admin/users"
+        },
+        {
+          "action": "assert",
+          "description": "The viewer's role is now editor",
+          "target": {
+            "strategy": "testid",
+            "value": "role-select-viewer"
+          },
+          "assertion": {
+            "kind": "value-equals",
+            "expected": "editor"
+          },
+          "expected": "The role select for viewer shows editor after reload"
+        }
+      ]
+    },
+    {
+      "id": "admin-cannot-change-own-role",
+      "name": "Admin cannot change their own role",
+      "intent": "Proves the signed-in admin's own row cannot be edited, so an admin cannot demote themselves.",
+      "criteria": ["ac-2"],
+      "persona": "admin",
+      "tags": ["edge"],
+      "preconditions": {
+        "seed_profile": "admin-heavy",
+        "start_path": "/admin/users"
+      },
+      "steps": [
+        {
+          "action": "assert",
+          "description": "The admin's own role select is disabled",
+          "target": {
+            "strategy": "testid",
+            "value": "role-select-admin"
+          },
+          "assertion": {
+            "kind": "disabled"
+          }
+        },
+        {
+          "action": "assert",
+          "description": "The admin's own Save button is disabled",
+          "target": {
+            "strategy": "testid",
+            "value": "role-save-admin"
+          },
+          "assertion": {
+            "kind": "disabled"
+          }
+        },
+        {
+          "action": "assert",
+          "description": "Another admin's role can still be edited",
+          "target": {
+            "strategy": "testid",
+            "value": "role-select-admin2"
+          },
+          "assertion": {
+            "kind": "enabled"
+          }
+        }
+      ]
+    },
+    {
+      "id": "editor-cannot-manage-users",
+      "name": "Editor cannot reach the Users page",
+      "intent": "Proves the manage-users permission is enforced for editors in navigation and on the server.",
+      "criteria": ["ac-3"],
+      "persona": "editor",
+      "tags": ["permissions"],
+      "preconditions": {
+        "seed_profile": "default",
+        "start_path": "/tickets"
+      },
+      "steps": [
+        {
+          "action": "assert",
+          "description": "No Users link in the navigation",
+          "target": {
+            "strategy": "testid",
+            "value": "nav-admin-users"
+          },
+          "assertion": {
+            "kind": "count-equals",
+            "expected": 0
+          }
+        },
+        {
+          "action": "navigate",
+          "description": "Go to the Users page directly",
+          "value": "/admin/users"
+        },
+        {
+          "action": "assert",
+          "description": "A permission error is shown",
+          "target": {
+            "strategy": "role",
+            "role": "alert"
+          },
+          "assertion": {
+            "kind": "text-contains",
+            "expected": "permission"
+          },
+          "expected": "\"You do not have permission to view this page.\""
+        }
+      ]
+    },
+    {
+      "id": "viewer-cannot-manage-users",
+      "name": "Viewer cannot reach the Users page",
+      "intent": "Proves the manage-users permission is enforced for viewers in navigation and on the server.",
+      "criteria": ["ac-3"],
+      "persona": "viewer",
+      "tags": ["permissions"],
+      "preconditions": {
+        "seed_profile": "default",
+        "start_path": "/tickets"
+      },
+      "steps": [
+        {
+          "action": "assert",
+          "description": "No Users link in the navigation",
+          "target": {
+            "strategy": "testid",
+            "value": "nav-admin-users"
+          },
+          "assertion": {
+            "kind": "count-equals",
+            "expected": 0
+          }
+        },
+        {
+          "action": "navigate",
+          "description": "Go to the Users page directly",
+          "value": "/admin/users"
+        },
+        {
+          "action": "assert",
+          "description": "A permission error is shown",
+          "target": {
+            "strategy": "role",
+            "role": "alert"
+          },
+          "assertion": {
+            "kind": "text-contains",
+            "expected": "permission"
+          },
+          "expected": "\"You do not have permission to view this page.\""
+        }
+      ]
+    }
+  ]
+}

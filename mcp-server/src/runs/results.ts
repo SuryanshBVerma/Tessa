@@ -47,8 +47,9 @@ function stepSignature(step: Plan.Step): string {
 export const OVERLAP_THRESHOLD = 0.8;
 
 /**
- * For each test, the other tests whose steps mostly match (Jaccard similarity of step
- * signatures at or above OVERLAP_THRESHOLD). Helps reviewers avoid exporting near-duplicates.
+ * For each test, the other tests for the same persona whose steps mostly match (Jaccard
+ * similarity of step signatures at or above OVERLAP_THRESHOLD). The same steps run as a different
+ * persona are a different test, usually a permission check, so they never count as overlap.
  */
 export function overlaps(tests: readonly Plan.Test[]): Map<string, string[]> {
   const signatures = tests.map((t) => new Set(t.steps.map(stepSignature)));
@@ -59,9 +60,9 @@ export function overlaps(tests: readonly Plan.Test[]): Map<string, string[]> {
       const b = signatures[j] ?? new Set<string>();
       const shared = [...a].filter((sig) => b.has(sig)).length;
       const union = new Set([...a, ...b]).size;
-      if (union > 0 && shared / union >= OVERLAP_THRESHOLD) {
-        const ti = tests[i];
-        const tj = tests[j];
+      const ti = tests[i];
+      const tj = tests[j];
+      if (union > 0 && shared / union >= OVERLAP_THRESHOLD && ti?.persona === tj?.persona) {
         if (ti !== undefined && tj !== undefined) {
           result.get(ti.id)?.push(tj.id);
           result.get(tj.id)?.push(ti.id);

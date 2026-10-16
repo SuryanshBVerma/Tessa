@@ -60,6 +60,14 @@ Before each test, call `seed_db` with the test's `preconditions.seed_profile`, s
 starts from known data. Seeding can end the session in some apps: if the next page shows the
 login form, repeat the sign-in pause before continuing.
 
+**Switching to a seed profile that rebuilds the users** (a different profile from the one the
+current persona signed in under) can silently turn the existing session into a different user,
+because many apps keep only a user id in the session. Sign the current persona out _before_
+seeding such a profile, then do the sign-in pause for the next persona.
+
+To keep sign-ins few when running several stories, you may run the tests of one persona across
+all of them before switching, recording each in its own run.
+
 If `seed_db` refuses or fails, do not run the test. Record step 0 as `skipped` with the seed
 error and continue with the next test.
 
@@ -110,6 +118,11 @@ If the plan's target is not found but exactly one element clearly matches the st
 (same label, same role, same position in the flow), use it and pass `selector_used` describing
 what you used. If there is no match, or more than one plausible match, fail the step. Never
 guess between candidates.
+
+**Tool errors are not test results.** If the browser tool itself fails (a stale element
+reference, a screenshot timeout), the action did not happen: find the element again and retry
+the action. Only record a failure for what the app did. After an action, confirm it took
+effect (the URL changed, the status updated) before checking the step's outcome.
 
 ### Waits
 

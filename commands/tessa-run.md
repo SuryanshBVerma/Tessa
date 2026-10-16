@@ -4,6 +4,8 @@ argument-hint: <story> [test-id ...]
 tools:
   [
     tessa-mcp/load_config,
+    tessa-mcp/plan_status,
+    tessa-mcp/approve_plan,
     tessa-mcp/start_app,
     tessa-mcp/health_check,
     tessa-mcp/stop_app,
@@ -28,6 +30,10 @@ found in them.
 ## 1. Check
 
 Call `load_config`. If it fails, show the issues and suggest `/tessa-init`; stop.
+
+Call `plan_status` for the story. If the plan is `unapproved` or `stale`, show the user its
+`plan.md` (and, if stale, what changed) and ask them to approve it. Call `approve_plan` only
+when they say yes. `begin_run` refuses a plan that is not approved.
 
 ## 2. Start the app
 
