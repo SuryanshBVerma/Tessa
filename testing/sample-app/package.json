@@ -6,6 +6,7 @@
   "license": "MIT",
   "type": "module",
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@react-router/dev": "8.4.0",
     "@types/pg": "8.23.1",
     "@types/react": "19.3.0",

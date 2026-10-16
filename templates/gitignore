@@ -3,4 +3,9 @@
 {{ARTIFACTS_ROOT}}/runs/
 {{ARTIFACTS_ROOT}}/diffs/
 {{ARTIFACTS_ROOT}}/.session/
+# Build and test output from validating exported tests.
+{{ARTIFACTS_ROOT}}/export/**/bin/
+{{ARTIFACTS_ROOT}}/export/**/obj/
+{{ARTIFACTS_ROOT}}/export/**/test-results/
+{{ARTIFACTS_ROOT}}/export/**/TestResults/
 # <<< tessa

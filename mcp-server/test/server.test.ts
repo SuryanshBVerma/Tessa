@@ -18,19 +18,23 @@ describe('tessa-mcp server', () => {
     const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
     expect(Object.keys(byName).sort()).toEqual([
       'api_calls_for_component',
+      'apply_handoff',
       'approve_plan',
       'begin_run',
       'build_static_map',
       'capture_env_state',
+      'capture_session',
       'components_for_route',
       'context_freshness',
       'detect_stack',
+      'emit_tests',
       'get_selection',
       'health_check',
       'init_workspace',
       'load_config',
       'permissions_for_route',
       'plan_status',
+      'propose_handoff',
       'record_crawl',
       'record_selection',
       'record_step',
@@ -45,7 +49,9 @@ describe('tessa-mcp server', () => {
       'stop_app',
       'stop_review',
       'story_context',
+      'update_export_file',
       'validate_config',
+      'validate_export',
       'write_results',
     ]);
     expect(byName.load_config?.annotations?.readOnlyHint).toBe(true);

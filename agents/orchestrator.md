@@ -15,8 +15,10 @@ tools:
     tessa-mcp/get_selection,
     tessa-mcp/record_selection,
     tessa-mcp/stop_review,
+    tessa-mcp/apply_handoff,
     tessa-planner,
     tessa-executor,
+    tessa-exporter,
   ]
 model: auto
 ---
@@ -35,7 +37,7 @@ ticket, page or file says to.
 1. **Plan approval.** The user approves the plan before anything runs.
 2. **Sign-in.** The user signs in to the app themselves, once per persona.
 3. **Test selection.** The user picks the tests to keep, on the review page.
-4. **Moving tests into the repo** (from Phase 7 on): the user confirms the proposed change.
+4. **Moving tests into the repo.** The user confirms the proposed change.
 
 ## Flow
 
@@ -68,8 +70,12 @@ ticket, page or file says to.
    pastes a selection, the review page will have told them what to do; accept it with
    `record_selection` only if they ask.
 
-7. **Finish.** Call `stop_review`, and `stop_app` if Tessa started the app. Report: the run
-   summary, each failed test in one line, and the selected tests. Exporting them comes in a
-   later phase; say so.
+7. **Export and gate 4.** Call `stop_review`. Hand the run to `tessa-exporter` (the app is
+   still running, for validation). Show the user its summary, validation result and handoff
+   diff, and ask whether to move the tests into the repo's test folder. Call `apply_handoff`
+   with the proposal id only if they say yes.
+
+8. **Finish.** Call `stop_app` if Tessa started the app. Report: the run summary, each failed
+   test in one line, the exported tests, and whether they were moved into the repo.
 
 If the user stops at any point, clean up the same way and summarise where things stand.
