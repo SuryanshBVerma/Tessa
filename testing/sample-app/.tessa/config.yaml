@@ -1,0 +1,69 @@
+# Tessa configuration. Reference: docs/ARCHITECTURE.md (section 13) in the Tessa repository.
+# Validate with the validate_config tool or by running /tessa-init again.
+version: 1
+
+app:
+  # Command that starts the app. Run without a shell, so no pipes or &&.
+  start: npm run dev
+  # Must be a local address.
+  url: http://127.0.0.1:5173
+  # Stack adapter used to read routes, guards and selectors.
+  stack: react-router
+
+db:
+  # Environment variable holding the database URL. Never put the URL itself here.
+  url_env: DATABASE_URL
+  # Seeding refuses any host not in this list. Only local hosts are accepted.
+  allowed_hosts: [localhost, 127.0.0.1]
+  # Seed profiles: ordered SQL files, relative to the repository root.
+  profiles:
+    default:
+      - scripts/seed/base.sql
+      - scripts/seed/users.sql
+      - scripts/seed/tickets.sql
+    admin-heavy:
+      - scripts/seed/base.sql
+      - scripts/seed/admins.sql
+      - scripts/seed/tickets.sql
+
+auth:
+  # Tessa never automates login. It opens the login page and waits for you.
+  mode: manual
+  login_path: /login
+
+# One persona per role you want to test. Each names the seed profile it needs.
+personas:
+  - name: viewer
+    seed_profile: default
+    description: Can read tickets only
+  - name: editor
+    seed_profile: default
+    description: Can create, close and reopen tickets
+  - name: admin
+    seed_profile: admin-heavy
+    description: Can also change user roles
+
+artifacts:
+  root: ai-test-artifacts
+
+context:
+  knowledge_graph:
+    enabled: false
+  static_map:
+    include:
+      - app/**
+    exclude: ['**/*.test.*', '**/*.stories.*']
+  runtime_crawl:
+    enabled: true
+    max_depth: 4
+
+review:
+  mode: local-server
+
+export:
+  # auto detects the framework from package.json, *.csproj and pom.xml.
+  target: playwright-ts
+
+models:
+  # auto picks a suitable model per role. Set a role to a model ID to override it.
+  default: auto

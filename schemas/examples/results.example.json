@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "run_id": "20261016T104512Z",
+  "story_id": "create-ticket",
+  "plan": "plans/create-ticket/tests.json",
+  "started_at": "2026-10-16T10:45:12Z",
+  "finished_at": "2026-10-16T10:46:03Z",
+  "environment": {
+    "app_url": "http://127.0.0.1:5173",
+    "commit": "a4caeec",
+    "branch": "develop",
+    "dirty": false,
+    "host": "claude-code",
+    "browser": "chromium",
+    "models": { "executor": "auto", "triage": "auto" }
+  },
+  "summary": {
+    "total": 3,
+    "passed": 2,
+    "failed": 1,
+    "skipped": 0,
+    "error": 0,
+    "duration_ms": 51000
+  },
+  "tests": [
+    {
+      "test_id": "editor-creates-ticket",
+      "status": "passed",
+      "duration_ms": 18400,
+      "attempts": 1,
+      "env_state": {
+        "persona": "editor",
+        "role": "editor",
+        "permissions": ["tickets:read", "tickets:create", "tickets:close"],
+        "settings": { "theme": "light" },
+        "feature_flags": { "ticket_priority": true, "ticket_export": false },
+        "seed_profile": "default"
+      },
+      "steps": [
+        {
+          "index": 0,
+          "status": "passed",
+          "duration_ms": 900,
+          "screenshot": "screenshots/editor-creates-ticket/00.png"
+        },
+        { "index": 1, "status": "passed", "duration_ms": 400 },
+        { "index": 2, "status": "passed", "duration_ms": 300 },
+        { "index": 3, "status": "passed", "duration_ms": 1200 },
+        { "index": 4, "status": "passed", "duration_ms": 100 },
+        {
+          "index": 5,
+          "status": "passed",
+          "duration_ms": 100,
+          "screenshot": "screenshots/editor-creates-ticket/05.png"
+        }
+      ],
+      "quality": { "selector_stability": "high", "rerun_consistency": 1 }
+    },
+    {
+      "test_id": "short-title-rejected",
+      "status": "failed",
+      "duration_ms": 9100,
+      "attempts": 2,
+      "env_state": { "persona": "editor", "role": "editor", "seed_profile": "default" },
+      "steps": [
+        { "index": 0, "status": "passed" },
+        { "index": 1, "status": "passed" },
+        {
+          "index": 2,
+          "status": "failed",
+          "expected": "Form submits and shows a validation message",
+          "actual": "Browser blocked submit because the title input has minlength=3",
+          "screenshot": "screenshots/short-title-rejected/02.png"
+        },
+        { "index": 3, "status": "skipped" }
+      ],
+      "failure": {
+        "step_index": 2,
+        "message": "Client-side validation prevented the submit",
+        "expected": "Server-side validation message",
+        "actual": "Native browser validation tooltip",
+        "screenshot": "screenshots/short-title-rejected/02.png"
+      },
+      "triage": {
+        "class": "test-selector",
+        "rationale": "The input has minlength=3, so the browser never submits. The test should assert the input validity state instead.",
+        "confidence": "high",
+        "evidence": ["screenshots/short-title-rejected/02.png"]
+      },
+      "quality": { "selector_stability": "high", "rerun_consistency": 1 }
+    },
+    {
+      "test_id": "viewer-cannot-create",
+      "status": "passed",
+      "duration_ms": 6200,
+      "attempts": 1,
+      "env_state": {
+        "persona": "viewer",
+        "role": "viewer",
+        "permissions": ["tickets:read"],
+        "seed_profile": "default"
+      },
+      "steps": [
+        { "index": 0, "status": "passed" },
+        { "index": 1, "status": "passed" },
+        {
+          "index": 2,
+          "status": "passed",
+          "screenshot": "screenshots/viewer-cannot-create/02.png"
+        }
+      ],
+      "quality": { "selector_stability": "medium", "overlap_with": [] }
+    }
+  ]
+}

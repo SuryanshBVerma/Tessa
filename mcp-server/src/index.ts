@@ -1,2 +1,12 @@
-// Placeholder entry point. The MCP server and its tools arrive in Phase 2.
-export const SERVER_NAME = 'tessa-mcp';
+export { SERVER_NAME, SERVER_VERSION } from './version.js';
+export { createServer, type ServerOptions } from './server.js';
+export * from './config/index.js';
+export { initWorkspace, type InitOptions, type InitResult } from './init/index.js';
+export {
+  formatIssues,
+  SCHEMA_NAMES,
+  validate,
+  type SchemaIssue,
+  type SchemaName,
+  type ValidationResult,
+} from './schemas/index.js';

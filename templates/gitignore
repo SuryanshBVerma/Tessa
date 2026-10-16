@@ -1,0 +1,6 @@
+# >>> tessa (managed by /tessa-init; edit outside this block)
+# Run output can contain screenshots and session state.
+{{ARTIFACTS_ROOT}}/runs/
+{{ARTIFACTS_ROOT}}/diffs/
+{{ARTIFACTS_ROOT}}/.session/
+# <<< tessa

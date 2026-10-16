@@ -7,3 +7,5 @@ docs/DECISIONS.md
 package-lock.json
 **/build/
 **/.react-router/
+**/src/schemas/generated/*.ts
+!**/src/schemas/generated/index.ts

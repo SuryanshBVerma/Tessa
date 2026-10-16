@@ -11,6 +11,8 @@ export default tseslint.config(
       '**/node_modules/',
       '**/coverage/',
       'Context/',
+      '**/src/schemas/generated/*.ts',
+      '!**/src/schemas/generated/index.ts',
     ],
   },
   js.configs.recommended,
@@ -38,6 +40,18 @@ export default tseslint.config(
           ],
         },
       ],
+    },
+  },
+  {
+    // Tests mutate untyped JSON fixtures to build invalid cases.
+    files: ['**/test/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
     },
   },
   {

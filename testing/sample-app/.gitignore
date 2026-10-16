@@ -1,0 +1,6 @@
+# >>> tessa (managed by /tessa-init; edit outside this block)
+# Run output can contain screenshots and session state.
+ai-test-artifacts/runs/
+ai-test-artifacts/diffs/
+ai-test-artifacts/.session/
+# <<< tessa

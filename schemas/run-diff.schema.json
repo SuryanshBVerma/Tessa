@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tessa-qa:schema:run-diff:1",
+  "title": "RunDiff",
+  "description": "Comparison of two runs, written to diffs/<run_a>__<run_b>.json. run_a is the baseline.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "run_a", "run_b", "created_at", "summary", "tests"],
+  "properties": {
+    "version": { "const": 1 },
+    "run_a": { "$ref": "#/$defs/runId" },
+    "run_b": { "$ref": "#/$defs/runId" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "commit_a": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+    "commit_b": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixed",
+        "regressed",
+        "still_failing",
+        "still_passing",
+        "added",
+        "removed",
+        "changed_other"
+      ],
+      "properties": {
+        "fixed": { "type": "integer", "minimum": 0 },
+        "regressed": { "type": "integer", "minimum": 0 },
+        "still_failing": { "type": "integer", "minimum": 0 },
+        "still_passing": { "type": "integer", "minimum": 0 },
+        "added": { "type": "integer", "minimum": 0 },
+        "removed": { "type": "integer", "minimum": 0 },
+        "changed_other": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "tests": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/testDiff" }
+    }
+  },
+  "$defs": {
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{6}Z(-[0-9]+)?$"
+    },
+    "status": { "enum": ["passed", "failed", "skipped", "error"] },
+    "testDiff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["test_id", "change"],
+      "properties": {
+        "test_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "maxLength": 80
+        },
+        "change": {
+          "enum": [
+            "fixed",
+            "regressed",
+            "still-failing",
+            "still-passing",
+            "added",
+            "removed",
+            "changed-other"
+          ]
+        },
+        "status_a": { "$ref": "#/$defs/status" },
+        "status_b": { "$ref": "#/$defs/status" },
+        "failing_step_a": { "type": "integer", "minimum": 0 },
+        "failing_step_b": { "type": "integer", "minimum": 0 },
+        "duration_delta_ms": { "type": "integer" },
+        "notes": {
+          "description": "Triage interpretation of the change.",
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "change": { "const": "added" } } },
+          "then": { "required": ["status_b"], "not": { "required": ["status_a"] } }
+        },
+        {
+          "if": { "properties": { "change": { "const": "removed" } } },
+          "then": { "required": ["status_a"], "not": { "required": ["status_b"] } }
+        },
+        {
+          "if": { "properties": { "change": { "not": { "enum": ["added", "removed"] } } } },
+          "then": { "required": ["status_a", "status_b"] }
+        }
+      ]
+    }
+  }
+}
