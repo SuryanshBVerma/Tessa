@@ -1,20 +1,46 @@
 {
-  "name": "tessa-mcp",
+  "name": "tessa-qa",
   "version": "0.8.0",
-  "private": true,
-  "description": "MCP server that owns every deterministic or side-effecting Tessa operation",
+  "description": "Agentic tester for VS Code agent mode and Claude Code: plans tests from a user story, runs them in the browser with you, reports, and exports the ones you keep to Playwright.",
   "license": "MIT",
   "type": "module",
+  "keywords": [
+    "testing",
+    "qa",
+    "mcp",
+    "agent",
+    "playwright",
+    "claude-code",
+    "vscode",
+    "copilot"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "tessa-qa": "dist/cli.js",
+    "tessa-mcp": "dist/bin.js"
+  },
   "files": [
     "dist",
-    "templates"
+    "!dist/**/*.map",
+    "templates",
+    "init-templates",
+    "schemas",
+    "agents",
+    "commands",
+    "skills",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "schemas:types": "node scripts/generate-schema-types.ts"
+    "schemas:types": "node scripts/generate-schema-types.ts",
+    "prepack": "npm run build && node scripts/pack-assets.ts copy",
+    "postpack": "node scripts/pack-assets.ts clean"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
@@ -28,8 +54,5 @@
   "devDependencies": {
     "@types/pg": "8.23.1",
     "json-schema-to-typescript": "16.0.0"
-  },
-  "bin": {
-    "tessa-mcp": "dist/bin.js"
   }
 }

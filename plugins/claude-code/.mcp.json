@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "tessa-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "tessa-qa@0.8.0",
+        "mcp"
+      ]
+    }
+  }
+}

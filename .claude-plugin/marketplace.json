@@ -1,0 +1,12 @@
+{
+  "name": "tessa",
+  "owner": { "name": "Tessa contributors" },
+  "description": "Tessa, an agentic tester for Claude Code and VS Code agent mode.",
+  "plugins": [
+    {
+      "name": "tessa-qa",
+      "source": "./plugins/claude-code",
+      "description": "Plans tests from a user story, runs them in the browser with you, reports, and exports the ones you keep to Playwright."
+    }
+  ]
+}

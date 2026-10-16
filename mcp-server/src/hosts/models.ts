@@ -1,4 +1,4 @@
-import type { ResolvedConfig } from '../config/index.js';
+import { loadConfig, type ResolvedConfig } from '../config/index.js';
 
 export const ROLES = [
   'orchestrator',
@@ -88,4 +88,17 @@ export function modelsForRun(
     }
   }
   return base;
+}
+
+/** The workspace's models section, or auto for every role when there is no valid config yet. */
+export function workspaceModels(workspace: string): {
+  config: Pick<ResolvedConfig, 'models'>;
+  fromConfig: boolean;
+} {
+  const loaded = loadConfig({ workspace });
+  if (loaded.ok) {
+    return { config: loaded.config, fromConfig: true };
+  }
+  const models = Object.fromEntries([...ROLES, 'default'].map((r) => [r, 'auto']));
+  return { config: { models: models as ResolvedConfig['models'] }, fromConfig: false };
 }

@@ -1,7 +1,30 @@
-# tessa-mcp
+# tessa-qa
 
-The MCP server behind Tessa. It owns every deterministic or side-effecting operation; Tessa's
-agents and skills call these tools instead of running shell commands or editing files.
+Tessa is an agentic tester for Claude Code and VS Code agent mode. It reads a user story and the
+code, plans tests for you to approve, runs them in the browser while you sign in, writes an HTML
+report, and exports the tests you keep to Playwright TS or Playwright .NET.
+
+This package holds the `tessa-mcp` server, which owns every deterministic or side-effecting
+operation, and the agents, commands and skills Tessa installs into your host.
+
+## Install
+
+In the repository you want to test (Node 24 or later):
+
+```bash
+npx tessa-qa@<version> install --host claude-code    # or --host vscode-agent
+```
+
+Then restart the host, approve the `tessa-mcp` server, and run `/tessa-init`. Claude Code users
+can install the plugin instead; see docs/INSTALL.md in the repository.
+
+`install` writes `.claude/` and `.mcp.json`, or `.github/agents`, `.github/prompts`,
+`.github/skills` and `.vscode/mcp.json`. It replaces only files it wrote before, adds only its
+own entry to the MCP config, and pins the server to the installed version. Preview with
+`--dry-run`.
+
+The server only allows local databases and app URLs, never automates sign-in, and keeps run
+output (screenshots included) in gitignored folders.
 
 ## Tools
 
@@ -39,53 +62,31 @@ agents and skills call these tools instead of running shell commands or editing 
 | `capture_session`                                                                                                           | no               | Opens Playwright's browser so the user signs in; Playwright saves the session to the gitignored `.session/`                                                                                      |
 | `propose_handoff`                                                                                                           | yes              | The diff for copying exported tests into the repo's test folder, with a proposal id                                                                                                              |
 | `apply_handoff`                                                                                                             | no               | Writes that proposal, only if nothing changed since; the user confirms first                                                                                                                     |
+| `list_runs`                                                                                                                 | yes              | Runs under the artifacts root, newest first, with their state, commit, summary and the run they reran                                                                                            |
+| `failed_test_ids`                                                                                                           | yes              | The failed and errored tests of a run (default: the newest complete one), for a rerun with `begin_run`'s `rerun_of`                                                                              |
+| `diff_runs`                                                                                                                 | no               | Compares two runs of a story and writes `diffs/<a>__<b>.json` and `.html`; lists files changed between the commits                                                                               |
+| `annotate_diff`                                                                                                             | no               | Adds triage notes to a diff and re-renders its page                                                                                                                                              |
+| `record_triage`                                                                                                             | no               | Stores a failure's triage class, rationale, confidence and evidence in `results.json`                                                                                                            |
+| `write_host_files`                                                                                                          | no               | Writes the agents, commands, skills and MCP entry for Claude Code or VS Code, with models from config; replaces only files it wrote                                                              |
 
-Later phases add run diff tools
-(see [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)).
-
-## Run it
+## Run it by hand
 
 ```bash
-npm run build -w mcp-server
-node mcp-server/dist/bin.js --workspace path/to/your/repo
+npx tessa-qa@<version> mcp --workspace path/to/your/repo
 ```
 
 The server speaks MCP over stdio. The workspace is the repository under test, taken from
 `--workspace`, then `TESSA_WORKSPACE`, then the directory the host starts the server in. No tool
-reads or writes outside it.
-
-### Claude Code
-
-`.mcp.json` in the repository under test:
-
-```json
-{
-  "mcpServers": {
-    "tessa-mcp": {
-      "command": "node",
-      "args": ["/path/to/Tessa/mcp-server/dist/bin.js"]
-    }
-  }
-}
-```
-
-### VS Code agent mode
-
-`.vscode/mcp.json` in the repository under test:
-
-```json
-{
-  "servers": {
-    "tessa-mcp": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["/path/to/Tessa/mcp-server/dist/bin.js", "--workspace", "${workspaceFolder}"]
-    }
-  }
-}
-```
+reads or writes outside it. `tessa-mcp` is the same server as a separate binary.
 
 ## Development
+
+From a clone of the repository:
+
+```bash
+npm run build -w mcp-server
+node mcp-server/dist/cli.js mcp --workspace path/to/your/repo
+```
 
 ```bash
 npm run schemas:types -w mcp-server   # regenerate src/schemas/generated/ after editing schemas/

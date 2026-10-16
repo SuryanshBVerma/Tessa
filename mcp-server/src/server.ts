@@ -20,7 +20,7 @@ import { UnsafeDatabaseError } from './db/guard.js';
 import { emitTests, ExportError, updateExportFile } from './export/export.js';
 import { applyHandoff, proposeHandoff } from './export/handoff.js';
 import { SessionCapture, validateExport } from './export/validate.js';
-import { modelsForRun, resolveModels, ROLES } from './hosts/models.js';
+import { modelsForRun, resolveModels, ROLES, workspaceModels } from './hosts/models.js';
 import { renderHost } from './hosts/render.js';
 import { loadSources } from './hosts/sources.js';
 import { writeHostFiles } from './hosts/write.js';
@@ -284,14 +284,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
     },
     ({ host, dry_run, overwrite }) => {
       try {
-        const loaded = loadConfig({ workspace });
-        const config = loaded.ok
-          ? loaded.config
-          : {
-              models: Object.fromEntries(
-                [...ROLES, 'default'].map((r) => [r, 'auto']),
-              ) as ResolvedConfig['models'],
-            };
+        const { config, fromConfig } = workspaceModels(workspace);
         const files = renderHost(host, loadSources(), config);
         const outcomes = writeHostFiles(workspace, host, files, {
           ...(dry_run === undefined ? {} : { dryRun: dry_run }),
@@ -301,7 +294,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           ok: !outcomes.some((o) => o.status === 'conflict'),
           host,
           dry_run: dry_run === true,
-          config_used: loaded.ok,
+          config_used: fromConfig,
           models: resolveModels(config, host).map((c) => ({ role: c.role, model: c.label })),
           files: outcomes,
           next_steps:

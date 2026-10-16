@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { SERVER_VERSION } from '../src/index.js';
+import { PACKAGED_NAME } from '../src/assets.js';
 import { mergeGitignore } from '../src/init/index.js';
 import { call, connect, REPO_ROOT, SAMPLE_INIT, sampleWorkspace } from './helpers.js';
 
@@ -207,5 +208,21 @@ describe('mergeGitignore', () => {
   it('replaces only the managed block', () => {
     const existing = `a\n# >>> tessa\nold/\n# <<< tessa\nb\n`;
     expect(mergeGitignore(existing, block)).toBe(`a\n${block}b\n`);
+  });
+});
+
+describe('package', () => {
+  it('ships every folder the server reads at run time', () => {
+    const pkg = JSON.parse(readFileSync(join(REPO_ROOT, 'mcp-server', 'package.json'), 'utf8'));
+    const packScript = readFileSync(
+      join(REPO_ROOT, 'mcp-server', 'scripts', 'pack-assets.ts'),
+      'utf8',
+    );
+    for (const folder of Object.values(PACKAGED_NAME)) {
+      expect(pkg.files).toContain(folder);
+      expect(packScript).toContain(`'${folder}']`);
+    }
+    expect(pkg.files).toContain('templates');
+    expect(pkg.bin).toEqual({ 'tessa-qa': 'dist/cli.js', 'tessa-mcp': 'dist/bin.js' });
   });
 });
