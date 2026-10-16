@@ -3,7 +3,7 @@ description: Set up Tessa in this repository - detect the stack, write .tessa/co
 allowed-tools: mcp__plugin_tessa-qa_tessa-mcp__detect_stack, mcp__plugin_tessa-qa_tessa-mcp__validate_config, mcp__plugin_tessa-qa_tessa-mcp__load_config
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.9.0 from commands/tessa-init.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.1 from commands/tessa-init.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # /tessa-init
 

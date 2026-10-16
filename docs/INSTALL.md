@@ -13,7 +13,7 @@ use if you set models in `.tessa/config.yaml`. The Claude Code plugin is quicker
 In the root of the repository you want to test:
 
 ```bash
-npx tessa-qa@0.9.0 install --host claude-code --dry-run
+npx tessa-qa@0.9.1 install --host claude-code --dry-run
 ```
 
 The dry run lists the files Tessa would write. Then run it without `--dry-run`, or use

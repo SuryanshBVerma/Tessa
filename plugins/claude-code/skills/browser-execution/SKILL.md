@@ -3,7 +3,7 @@ name: browser-execution
 description: How Tessa's executor runs a plan in the host browser - the sign-in pause, seeding between tests, resolving targets, waits, assertions, screenshots, and recording every step with tessa-mcp. Use when executing tests from begin_run.
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.9.0 from skills/browser-execution/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.1 from skills/browser-execution/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # Browser execution
 

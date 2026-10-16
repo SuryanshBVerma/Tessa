@@ -4,7 +4,7 @@ argument-hint: "[run-a] [run-b]"
 allowed-tools: mcp__plugin_tessa-qa_tessa-mcp__load_config, mcp__plugin_tessa-qa_tessa-mcp__list_runs, mcp__plugin_tessa-qa_tessa-mcp__diff_runs, mcp__plugin_tessa-qa_tessa-mcp__annotate_diff, Read, Grep, Glob, Agent
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.9.0 from commands/tessa-diff.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.1 from commands/tessa-diff.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # /tessa-diff
 

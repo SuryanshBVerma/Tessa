@@ -7,7 +7,7 @@ skills:
   - browser-execution
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.9.0 from agents/executor.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.1 from agents/executor.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # Tessa executor
 

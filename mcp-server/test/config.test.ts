@@ -293,13 +293,23 @@ describe('resolveInside', () => {
     expect(resolveInside(dir, '.')).toBe(dir);
   });
 
-  it.each(['..', '../x', 'a/../../x', '/etc/passwd', 'C:\\Windows', 'a\0b'])(
-    'refuses %j',
-    (path) => {
-      const dir = workspace();
-      expect(() => resolveInside(dir, path)).toThrow(PathEscapeError);
-    },
-  );
+  it.each(['..', '../x', 'a/../../x', '/etc/passwd', 'a\0b'])('refuses %j', (path) => {
+    const dir = workspace();
+    expect(() => resolveInside(dir, path)).toThrow(PathEscapeError);
+  });
+
+  // Drive letters and backslashes are path syntax only on Windows. Elsewhere "C:\Windows" is an
+  // ordinary file name, which stays inside the workspace.
+  it.runIf(process.platform === 'win32')('refuses another drive on Windows', () => {
+    const dir = workspace();
+    expect(() => resolveInside(dir, 'C:\\Windows')).toThrow(PathEscapeError);
+    expect(() => resolveInside(dir, '..\\x')).toThrow(PathEscapeError);
+  });
+
+  it.runIf(process.platform !== 'win32')('treats backslashes as part of a name on POSIX', () => {
+    const dir = workspace();
+    expect(resolveInside(dir, 'C:\\Windows')).toBe(join(dir, 'C:\\Windows'));
+  });
 
   it('refuses a new file under a folder that links out of the workspace', () => {
     const dir = workspace();
