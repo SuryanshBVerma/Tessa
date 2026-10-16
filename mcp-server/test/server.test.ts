@@ -17,6 +17,7 @@ describe('tessa-mcp server', () => {
     const { tools } = await client.listTools();
     const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
     expect(Object.keys(byName).sort()).toEqual([
+      'approve_plan',
       'begin_run',
       'capture_env_state',
       'detect_stack',
@@ -24,10 +25,12 @@ describe('tessa-mcp server', () => {
       'health_check',
       'init_workspace',
       'load_config',
+      'plan_status',
       'record_selection',
       'record_step',
       'render_report',
       'reset_db',
+      'save_plan',
       'seed_db',
       'serve_review',
       'start_app',

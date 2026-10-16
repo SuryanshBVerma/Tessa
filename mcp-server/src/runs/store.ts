@@ -55,24 +55,10 @@ export function planPath(storyId: string): string {
   return `plans/${storyId}/tests.json`;
 }
 
-export function loadPlan(ctx: RunContext, storyId: string): Plan.TestPlan {
-  if (!ID.test(storyId)) {
-    throw new RunError(`story id "${storyId}" must be lowercase letters, digits and dashes`);
-  }
-  const file = artifactsDir(ctx, planPath(storyId));
-  if (!existsSync(file)) {
-    throw new RunError(`no plan at ${ctx.config.artifacts.root}/${planPath(storyId)}`);
-  }
-  const text = readFileSync(file, 'utf8');
-  if (text.length > MAX_PLAN_BYTES) {
-    throw new RunError('plan is larger than 2 MB');
-  }
-  let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch (error) {
-    throw new RunError(`plan is not valid JSON: ${error instanceof Error ? error.message : ''}`);
-  }
+export const STORY_ID = ID;
+
+/** Validates a plan against test-ir.schema.json and the config's personas and seed profiles. */
+export function checkPlan(ctx: RunContext, data: unknown): Plan.TestPlan {
   const checked = validate('test-ir', data);
   if (!checked.ok) {
     throw new RunError(
@@ -83,6 +69,7 @@ export function loadPlan(ctx: RunContext, storyId: string): Plan.TestPlan {
   }
   const personas = new Set(ctx.config.personas.map((p) => p.name));
   const profiles = new Set(Object.keys(ctx.config.db.profiles));
+  const criteria = new Set((checked.value.story.acceptance_criteria ?? []).map((c) => c.id));
   const ids = new Set<string>();
   for (const test of checked.value.tests) {
     if (ids.has(test.id)) {
@@ -97,8 +84,39 @@ export function loadPlan(ctx: RunContext, storyId: string): Plan.TestPlan {
         `test "${test.id}" uses unknown seed profile "${test.preconditions.seed_profile}"`,
       );
     }
+    for (const criterion of test.criteria ?? []) {
+      if (!criteria.has(criterion)) {
+        throw new RunError(`test "${test.id}" covers unknown acceptance criterion "${criterion}"`);
+      }
+    }
   }
   return checked.value;
+}
+
+export function readPlanText(ctx: RunContext, storyId: string): string {
+  if (!ID.test(storyId)) {
+    throw new RunError(`story id "${storyId}" must be lowercase letters, digits and dashes`);
+  }
+  const file = artifactsDir(ctx, planPath(storyId));
+  if (!existsSync(file)) {
+    throw new RunError(`no plan at ${ctx.config.artifacts.root}/${planPath(storyId)}`);
+  }
+  const text = readFileSync(file, 'utf8');
+  if (text.length > MAX_PLAN_BYTES) {
+    throw new RunError('plan is larger than 2 MB');
+  }
+  return text;
+}
+
+export function loadPlan(ctx: RunContext, storyId: string): Plan.TestPlan {
+  const text = readPlanText(ctx, storyId);
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch (error) {
+    throw new RunError(`plan is not valid JSON: ${error instanceof Error ? error.message : ''}`);
+  }
+  return checkPlan(ctx, data);
 }
 
 function timestampId(date: Date): string {
