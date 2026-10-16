@@ -145,6 +145,9 @@ export function buildResults(
     const consistent = attemptStatuses.filter((s) => s === status).length;
     const duration = finalSteps.reduce((sum, s) => sum + (s.duration_ms ?? 0), 0);
     const failure = failureFor(status, finalSteps, test.steps.length);
+    // Triage explains a failure or a flaky pass; a later clean pass makes it moot.
+    const triage =
+      status === 'passed' && consistent === attempts ? undefined : state.triage?.[testId];
 
     tests.push({
       test_id: testId,
@@ -157,6 +160,7 @@ export function buildResults(
       },
       steps: finalSteps.map(toStepResult),
       ...(failure === undefined ? {} : { failure }),
+      ...(triage === undefined ? {} : { triage }),
       quality: {
         selector_stability: selectorStability(test),
         rerun_consistency: Math.round((consistent / attempts) * 100) / 100,

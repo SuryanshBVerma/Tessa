@@ -42,6 +42,8 @@ export interface RunState {
   environment: Omit<Results.RunEnvironment, 'host'>;
   env_states: Record<string, Results.EnvState>;
   steps: Record<string, StepRecord[]>;
+  /** Triage findings by test id, kept here so write_results never drops them. */
+  triage?: Record<string, Results.Triage>;
 }
 
 export interface RunContext {

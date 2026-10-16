@@ -1,4 +1,4 @@
-import { mkdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import * as z from 'zod';
@@ -33,8 +33,9 @@ import {
 } from './plans/plans.js';
 import { loadResults, renderReport } from './report/render.js';
 import { buildSelection, readSelection, ReviewServer, writeSelection } from './report/server.js';
-import { renderDiffHtml } from './report/diff.js';
-import { changedFiles, diffRuns, diffStem } from './runs/diff.js';
+import { readDiff, writeDiff } from './report/diff.js';
+import { recordTriage } from './runs/triage.js';
+import { changedFiles, diffRuns } from './runs/diff.js';
 import {
   compareRunIds,
   failedTests,
@@ -54,7 +55,7 @@ import {
   writeAtomic,
   type StepRecord,
 } from './runs/store.js';
-import type { Plan, Results } from './schemas/generated/index.js';
+import type { Results } from './schemas/generated/index.js';
 import { SERVER_NAME, SERVER_VERSION } from './version.js';
 
 const EXPORT_TARGETS = [
@@ -713,36 +714,122 @@ export function createServer({ workspace }: ServerOptions): McpServer {
             ? undefined
             : await changedFiles(workspace, commitA, commitB);
         const diff = diffRuns({ a, b, ...(files === undefined ? {} : { changedFiles: files }) });
-        let plan: Plan.TestPlan | null = null;
-        try {
-          plan = loadPlan(ctx, a.story_id);
-        } catch {
-          // The diff still renders, by test id.
+        // Keep triage notes from an earlier diff of the same runs where the change is the same.
+        const previous = readDiff(ctx, a.run_id, b.run_id);
+        for (const test of diff.tests) {
+          const before = previous?.tests.find((t) => t.test_id === test.test_id);
+          if (before?.notes !== undefined && before.change === test.change) {
+            test.notes = before.notes;
+          }
         }
-        const stem = diffStem(a.run_id, b.run_id);
-        mkdirSync(artifactsDir(ctx, 'diffs'), { recursive: true });
-        writeAtomic(
-          artifactsDir(ctx, 'diffs', `${stem}.json`),
-          `${JSON.stringify(diff, null, 2)}
-`,
-        );
-        writeAtomic(
-          artifactsDir(ctx, 'diffs', `${stem}.html`),
-          renderDiffHtml({ diff, a, b, plan }),
-        );
-        const root = config.artifacts.root;
+        const paths = writeDiff(ctx, diff, a, b);
         return result({
           ok: true,
           run_a: a.run_id,
           run_b: b.run_id,
           story_id: a.story_id,
-          json_path: `${root}/diffs/${stem}.json`,
-          html_path: `${root}/diffs/${stem}.html`,
+          ...paths,
           summary: diff.summary,
           ...(diff.rerun_only === true ? { rerun_only: true } : {}),
           ...(diff.changed_files === undefined ? {} : { changed_files: diff.changed_files }),
           changed: diff.tests.filter((t) => t.change !== 'still-passing'),
         });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'record_triage',
+    {
+      title: 'Record a triage finding',
+      description:
+        'Store your classification of one failed, errored or flaky test in the run: app-bug (the app breaks the story), test-selector (the test or its target is wrong), environment (app, browser, network or session trouble), data (seed or leftover data), or unknown. Written to results.json and kept by later write_results calls; the report is re-rendered if it exists. Cite the evidence you used.',
+      inputSchema: {
+        run_id: z.string(),
+        test_id: z.string(),
+        class: z.enum(['app-bug', 'test-selector', 'environment', 'data', 'unknown']),
+        rationale: z.string().min(1).max(1000).describe('One or two sentences.'),
+        confidence: z.enum(['low', 'medium', 'high']),
+        evidence: z
+          .array(z.string().min(1).max(500))
+          .max(20)
+          .optional()
+          .describe(
+            'What you relied on: step results, screenshots, files and lines, diff entries.',
+          ),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ run_id, test_id, class: triageClass, rationale, confidence, evidence }) => {
+      try {
+        const ctx = { config: requireConfig(), workspace };
+        const triage = {
+          class: triageClass,
+          rationale,
+          confidence,
+          ...(evidence === undefined ? {} : { evidence }),
+        };
+        recordTriage(ctx, run_id, test_id, triage);
+        const hasReport = existsSync(artifactsDir(ctx, 'runs', run_id, 'report.html'));
+        return result({
+          ok: true,
+          run_id,
+          test_id,
+          triage,
+          ...(hasReport ? { report: renderReport(ctx, run_id).path } : {}),
+        });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'annotate_diff',
+    {
+      title: 'Annotate a run diff',
+      description:
+        'Add your interpretation to tests in an existing diff (from diff_runs), e.g. why a test regressed and what changed. Rewrites diffs/<run_a>__<run_b>.json and .html. An empty note removes one.',
+      inputSchema: {
+        run_a: z.string(),
+        run_b: z.string(),
+        notes: z
+          .array(z.object({ test_id: z.string(), note: z.string().max(1000) }))
+          .min(1)
+          .max(200),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ run_a, run_b, notes }) => {
+      try {
+        const ctx = { config: requireConfig(), workspace };
+        const diff = readDiff(ctx, run_a, run_b);
+        if (diff === null) {
+          throw new RunError(`no diff of ${run_a} and ${run_b}; call diff_runs first`);
+        }
+        const unknown = notes.filter((n) => !diff.tests.some((t) => t.test_id === n.test_id));
+        if (unknown.length > 0) {
+          throw new RunError(`the diff has no tests: ${unknown.map((n) => n.test_id).join(', ')}`);
+        }
+        for (const { test_id, note } of notes) {
+          const test = diff.tests.find((t) => t.test_id === test_id);
+          if (test !== undefined) {
+            if (note.trim() === '') {
+              delete test.notes;
+            } else {
+              test.notes = note;
+            }
+          }
+        }
+        const paths = writeDiff(
+          ctx,
+          diff,
+          resolveCompleteRun(ctx, run_a),
+          resolveCompleteRun(ctx, run_b),
+        );
+        return result({ ok: true, ...paths, annotated: notes.length });
       } catch (error) {
         return failure(error);
       }

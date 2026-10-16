@@ -1,6 +1,16 @@
 import { randomBytes } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { diffStem } from '../runs/diff.js';
+import {
+  artifactsDir,
+  loadPlan,
+  RUN_ID,
+  RunError,
+  writeAtomic,
+  type RunContext,
+} from '../runs/store.js';
 import type { Diff, Plan, Results } from '../schemas/generated/index.js';
+import { validate } from '../schemas/index.js';
 import { escapeHtml, fill, REPORT_TEMPLATE_DIR } from './render.js';
 
 // Same relative depth from src/report and dist/report: mcp-server/templates/diff.
@@ -151,4 +161,47 @@ export function renderDiffHtml(input: DiffPageInput): string {
     STYLE: `${readFileSync(new URL('report.css', REPORT_TEMPLATE_DIR), 'utf8')}\n${readFileSync(new URL('diff.css', DIFF_TEMPLATE_DIR), 'utf8')}`,
     BODY: body,
   });
+}
+
+/** Reads diffs/<run_a>__<run_b>.json, or null when that diff has not been written. */
+export function readDiff(ctx: RunContext, runA: string, runB: string): Diff.RunDiff | null {
+  for (const id of [runA, runB]) {
+    if (!RUN_ID.test(id)) {
+      throw new RunError(`"${id}" is not a run id`);
+    }
+  }
+  const file = artifactsDir(ctx, 'diffs', `${diffStem(runA, runB)}.json`);
+  if (!existsSync(file)) {
+    return null;
+  }
+  const checked = validate('run-diff', JSON.parse(readFileSync(file, 'utf8')));
+  if (!checked.ok) {
+    throw new RunError(`diff ${diffStem(runA, runB)}.json does not match run-diff.schema.json`);
+  }
+  return checked.value;
+}
+
+/** Writes the diff's JSON and HTML under diffs/ and returns their artifacts-relative paths. */
+export function writeDiff(
+  ctx: RunContext,
+  diff: Diff.RunDiff,
+  a: Results.RunResults,
+  b: Results.RunResults,
+): { json_path: string; html_path: string } {
+  let plan: Plan.TestPlan | null = null;
+  try {
+    plan = loadPlan(ctx, a.story_id);
+  } catch {
+    // The page still renders, by test id.
+  }
+  const stem = diffStem(a.run_id, b.run_id);
+  mkdirSync(artifactsDir(ctx, 'diffs'), { recursive: true });
+  writeAtomic(
+    artifactsDir(ctx, 'diffs', `${stem}.json`),
+    `${JSON.stringify(diff, null, 2)}
+`,
+  );
+  writeAtomic(artifactsDir(ctx, 'diffs', `${stem}.html`), renderDiffHtml({ diff, a, b, plan }));
+  const root = ctx.config.artifacts.root;
+  return { json_path: `${root}/diffs/${stem}.json`, html_path: `${root}/diffs/${stem}.html` };
 }

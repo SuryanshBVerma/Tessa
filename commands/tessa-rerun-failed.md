@@ -17,7 +17,11 @@ tools:
     tessa-mcp/record_step,
     tessa-mcp/write_results,
     tessa-mcp/render_report,
+    tessa-mcp/diff_runs,
+    tessa-mcp/record_triage,
+    tessa-mcp/annotate_diff,
     tessa-executor,
+    tessa-triage,
     browser,
   ]
 ---
@@ -57,8 +61,11 @@ your host cannot run subagents, follow the `browser-execution` skill yourself an
 ## 4. Finish
 
 - If Tessa started the app, call `stop_app`.
+- Call `diff_runs` with the original run as `run_a` and the rerun as `run_b`. It compares only
+  the rerun tests. Give the user the HTML path.
+- If any test still fails, hand the rerun and the original to the `tessa-triage` agent (or
+  follow `agents/triage.md` yourself). A test that passes now with no code change between the
+  runs is flaky; triage says why when it can.
 - Call `render_report` and give the user the report path.
-- For each rerun test, say whether it now passes or still fails, against the original run:
-  a test that passes now was likely fixed or is flaky; one that fails at the same step again is
-  a steady failure. Do not guess at causes here; that is triage.
+- For each rerun test, say whether it is fixed or still failing, with its triage class.
 - Mention that run output (screenshots included) is gitignored and stays on this machine.

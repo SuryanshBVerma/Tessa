@@ -136,30 +136,36 @@ function fixture() {
   });
 }
 
+/** Two complete runs of viewer-cannot-create: the first passes, the second fails at step 0. */
+async function passThenFail(client: Awaited<ReturnType<typeof connect>>): Promise<string[]> {
+  await call(client, 'approve_plan', { story: 'create-ticket' });
+  const ids: string[] = [];
+  for (const status of ['passed', 'failed'] as const) {
+    const begun = await call(client, 'begin_run', {
+      story: 'create-ticket',
+      test_ids: ['viewer-cannot-create'],
+    });
+    const runId = begun.data.run_id as string;
+    const steps = begun.data.tests[0].steps.length as number;
+    for (let i = 0; i < steps; i++) {
+      await call(client, 'record_step', {
+        run_id: runId,
+        test_id: 'viewer-cannot-create',
+        index: i,
+        status: status === 'passed' ? 'passed' : i === 0 ? 'failed' : 'skipped',
+      });
+    }
+    await call(client, 'write_results', { run_id: runId });
+    ids.push(runId);
+  }
+  return ids;
+}
+
 describe('diff_runs', () => {
   it('writes JSON and HTML, and defaults to the newest run against the one before', async () => {
     const workspace = fixture();
     const client = await connect(workspace);
-    await call(client, 'approve_plan', { story: 'create-ticket' });
-    const ids: string[] = [];
-    for (const status of ['passed', 'failed'] as const) {
-      const begun = await call(client, 'begin_run', {
-        story: 'create-ticket',
-        test_ids: ['viewer-cannot-create'],
-      });
-      const runId = begun.data.run_id as string;
-      const steps = begun.data.tests[0].steps.length as number;
-      for (let i = 0; i < steps; i++) {
-        await call(client, 'record_step', {
-          run_id: runId,
-          test_id: 'viewer-cannot-create',
-          index: i,
-          status: status === 'passed' ? 'passed' : i === 0 ? 'failed' : 'skipped',
-        });
-      }
-      await call(client, 'write_results', { run_id: runId });
-      ids.push(runId);
-    }
+    const ids = await passThenFail(client);
     const { isError, data } = await call(client, 'diff_runs', {});
     expect(isError, JSON.stringify(data)).toBe(false);
     expect(data).toMatchObject({ run_a: ids[0], run_b: ids[1], summary: { regressed: 1 } });
@@ -176,5 +182,102 @@ describe('diff_runs', () => {
     const alone = await call(client, 'diff_runs', { run_b: ids[0] });
     expect(alone.isError).toBe(true);
     expect(alone.data.error).toMatch(/no complete run of "create-ticket" before/);
+  });
+});
+
+describe('triage', () => {
+  const finding = {
+    class: 'app-bug',
+    rationale: 'The New ticket link is shown to viewers.',
+    confidence: 'high',
+    evidence: ['step 1 actual: link visible'],
+  };
+
+  it('stores a finding in results.json, keeps it through write_results, and renders it', async () => {
+    const workspace = fixture();
+    const client = await connect(workspace);
+    const [, failed = ''] = await passThenFail(client);
+    await call(client, 'render_report', { run_id: failed });
+    const recorded = await call(client, 'record_triage', {
+      run_id: failed,
+      test_id: 'viewer-cannot-create',
+      ...finding,
+    });
+    expect(recorded.isError, JSON.stringify(recorded.data)).toBe(false);
+    expect(recorded.data.report).toBe(`ai-test-artifacts/runs/${failed}/report.html`);
+
+    await call(client, 'write_results', { run_id: failed });
+    const results = JSON.parse(
+      readFileSync(join(workspace, 'ai-test-artifacts', 'runs', failed, 'results.json'), 'utf8'),
+    );
+    expect(results.tests[0].triage).toEqual(finding);
+    const listed = await call(client, 'failed_test_ids', { run_id: failed });
+    expect(listed.data.failed[0].triage).toEqual(finding);
+  });
+
+  it('refuses triage for a clean pass, an unknown test, or a run without results', async () => {
+    const workspace = fixture();
+    const client = await connect(workspace);
+    const [passed] = await passThenFail(client);
+    const clean = await call(client, 'record_triage', {
+      run_id: passed,
+      test_id: 'viewer-cannot-create',
+      ...finding,
+    });
+    expect(clean.data.error).toMatch(/passed on its first attempt/);
+    const unknown = await call(client, 'record_triage', {
+      run_id: passed,
+      test_id: 'nope',
+      ...finding,
+    });
+    expect(unknown.data.error).toMatch(/has no test "nope"/);
+    const begun = await call(client, 'begin_run', { story: 'create-ticket' });
+    const early = await call(client, 'record_triage', {
+      run_id: begun.data.run_id,
+      test_id: 'viewer-cannot-create',
+      ...finding,
+    });
+    expect(early.data.error).toMatch(/no results\.json yet/);
+  });
+
+  it('annotates a diff, keeps notes when the diff is rebuilt, and removes empty notes', async () => {
+    const workspace = fixture();
+    const client = await connect(workspace);
+    const [a, b] = await passThenFail(client);
+    const diffed = await call(client, 'diff_runs', { run_a: a, run_b: b });
+    const missing = await call(client, 'annotate_diff', {
+      run_a: b,
+      run_b: a,
+      notes: [{ test_id: 'viewer-cannot-create', note: 'x' }],
+    });
+    expect(missing.data.error).toMatch(/call diff_runs first/);
+    const wrong = await call(client, 'annotate_diff', {
+      run_a: a,
+      run_b: b,
+      notes: [{ test_id: 'nope', note: 'x' }],
+    });
+    expect(wrong.data.error).toMatch(/has no tests: nope/);
+
+    const note = 'The viewer guard was removed from the new-ticket route <script>.';
+    const annotated = await call(client, 'annotate_diff', {
+      run_a: a,
+      run_b: b,
+      notes: [{ test_id: 'viewer-cannot-create', note }],
+    });
+    expect(annotated.isError, JSON.stringify(annotated.data)).toBe(false);
+    const readJson = () => JSON.parse(readFileSync(join(workspace, diffed.data.json_path), 'utf8'));
+    expect(readJson().tests[0].notes).toBe(note);
+    const html = readFileSync(join(workspace, diffed.data.html_path), 'utf8');
+    expect(html).toContain('route &lt;script&gt;.');
+
+    await call(client, 'diff_runs', { run_a: a, run_b: b });
+    expect(readJson().tests[0].notes).toBe(note);
+
+    await call(client, 'annotate_diff', {
+      run_a: a,
+      run_b: b,
+      notes: [{ test_id: 'viewer-cannot-create', note: ' ' }],
+    });
+    expect(readJson().tests[0].notes).toBeUndefined();
   });
 });
