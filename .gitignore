@@ -1,8 +1,8 @@
 # Internal planning material, kept local only
-Context/
-CLAUDE.md
-docs/PLAN.md
-docs/DECISIONS.md
+/Context/
+/CLAUDE.md
+/docs/PLAN.md
+/docs/DECISIONS.md
 
 # Dependencies and build output
 node_modules/
