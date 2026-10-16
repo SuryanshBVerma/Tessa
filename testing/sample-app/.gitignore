@@ -3,4 +3,9 @@
 ai-test-artifacts/runs/
 ai-test-artifacts/diffs/
 ai-test-artifacts/.session/
+# Build and test output from validating exported tests.
+ai-test-artifacts/export/**/bin/
+ai-test-artifacts/export/**/obj/
+ai-test-artifacts/export/**/test-results/
+ai-test-artifacts/export/**/TestResults/
 # <<< tessa

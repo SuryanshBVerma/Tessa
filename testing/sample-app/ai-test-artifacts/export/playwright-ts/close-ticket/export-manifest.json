@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "story_id": "close-ticket",
+  "run_id": "20261016T080104Z",
+  "target": "playwright-ts",
+  "selected_test_ids": [
+    "editor-closes-ticket",
+    "editor-reopens-ticket",
+    "closed-ticket-in-closed-filter",
+    "viewer-cannot-close"
+  ],
+  "emitted_at": "2026-10-16T10:33:53.648Z",
+  "files": [
+    {
+      "path": "close-ticket.spec.ts",
+      "sha256": "987d1b72a34cc491c0dbddb015a95a5819eb0b2a641810a4ee611b5e1c0a7b17",
+      "handoff": true
+    },
+    {
+      "path": "playwright.config.ts",
+      "sha256": "fb6aa1029b720f9171a78403b703bf308bb956d53b3ecd526562f68ac63df9be",
+      "handoff": false
+    },
+    {
+      "path": "README.md",
+      "sha256": "0661006128ae4730f11a8a3d7755cbbe397bb0d1cb4880db8560bc6cf5fa9e6f",
+      "handoff": false
+    }
+  ]
+}
