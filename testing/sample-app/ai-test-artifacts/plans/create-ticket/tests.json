@@ -3,7 +3,7 @@
   "story": {
     "id": "create-ticket",
     "title": "Editors can create tickets; viewers cannot",
-    "source": "hand-written for Tessa Phase 3",
+    "source": "stories/create-ticket.md",
     "acceptance_criteria": [
       {
         "id": "ac-1",

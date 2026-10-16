@@ -1,0 +1,243 @@
+{
+  "version": 1,
+  "story": {
+    "id": "close-ticket",
+    "title": "Close and reopen a ticket",
+    "source": "stories/close-ticket.md",
+    "acceptance_criteria": [
+      {
+        "id": "ac-1",
+        "text": "An editor can close an open ticket from its detail page; its status shows \"closed\"."
+      },
+      {
+        "id": "ac-2",
+        "text": "An editor can reopen a closed ticket; its status shows \"open\" again."
+      },
+      {
+        "id": "ac-3",
+        "text": "A closed ticket appears under the \"closed\" filter of the ticket list and not under \"open\"."
+      },
+      {
+        "id": "ac-4",
+        "text": "A viewer can open a ticket's detail page but does not see a button to close or reopen it."
+      }
+    ]
+  },
+  "tests": [
+    {
+      "id": "editor-closes-ticket",
+      "name": "Editor closes an open ticket",
+      "intent": "Proves an editor can close an open ticket from its detail page and the status changes to closed.",
+      "criteria": ["ac-1"],
+      "persona": "editor",
+      "tags": ["happy-path"],
+      "preconditions": {
+        "seed_profile": "default",
+        "start_path": "/tickets/1"
+      },
+      "steps": [
+        {
+          "action": "assert",
+          "description": "Ticket #1 starts open",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-status"
+          },
+          "assertion": {
+            "kind": "text-equals",
+            "expected": "open"
+          }
+        },
+        {
+          "action": "click",
+          "description": "Click Close ticket",
+          "target": {
+            "strategy": "role",
+            "role": "button",
+            "name": "Close ticket"
+          }
+        },
+        {
+          "action": "assert",
+          "description": "The status shows closed",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-status"
+          },
+          "assertion": {
+            "kind": "text-equals",
+            "expected": "closed"
+          },
+          "expected": "Status reads \"closed\""
+        }
+      ]
+    },
+    {
+      "id": "editor-reopens-ticket",
+      "name": "Editor reopens a closed ticket",
+      "intent": "Proves an editor can reopen a closed ticket and the status changes back to open.",
+      "criteria": ["ac-2"],
+      "persona": "editor",
+      "tags": ["happy-path"],
+      "preconditions": {
+        "seed_profile": "default",
+        "start_path": "/tickets/3"
+      },
+      "steps": [
+        {
+          "action": "assert",
+          "description": "Ticket #3 starts closed",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-status"
+          },
+          "assertion": {
+            "kind": "text-equals",
+            "expected": "closed"
+          }
+        },
+        {
+          "action": "click",
+          "description": "Click Reopen ticket",
+          "target": {
+            "strategy": "role",
+            "role": "button",
+            "name": "Reopen ticket"
+          }
+        },
+        {
+          "action": "assert",
+          "description": "The status shows open",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-status"
+          },
+          "assertion": {
+            "kind": "text-equals",
+            "expected": "open"
+          },
+          "expected": "Status reads \"open\""
+        }
+      ]
+    },
+    {
+      "id": "closed-ticket-in-closed-filter",
+      "name": "A closed ticket moves from the open filter to the closed filter",
+      "intent": "Proves the ticket list's status filter reflects a ticket that was just closed.",
+      "criteria": ["ac-3"],
+      "persona": "editor",
+      "tags": ["edge"],
+      "preconditions": {
+        "seed_profile": "default",
+        "start_path": "/tickets/2"
+      },
+      "steps": [
+        {
+          "action": "click",
+          "description": "Close ticket #2",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-toggle-status"
+          }
+        },
+        {
+          "action": "wait",
+          "description": "Wait for the status to show closed",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-status"
+          },
+          "assertion": {
+            "kind": "text-equals",
+            "expected": "closed"
+          }
+        },
+        {
+          "action": "navigate",
+          "description": "Open the ticket list",
+          "value": "/tickets"
+        },
+        {
+          "action": "select",
+          "description": "Filter to closed tickets",
+          "target": {
+            "strategy": "testid",
+            "value": "status-filter"
+          },
+          "value": "closed"
+        },
+        {
+          "action": "assert",
+          "description": "Ticket #2 is listed",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-row-2"
+          },
+          "assertion": {
+            "kind": "visible"
+          }
+        },
+        {
+          "action": "select",
+          "description": "Filter to open tickets",
+          "target": {
+            "strategy": "testid",
+            "value": "status-filter"
+          },
+          "value": "open"
+        },
+        {
+          "action": "assert",
+          "description": "Ticket #2 is not listed",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-row-2"
+          },
+          "assertion": {
+            "kind": "count-equals",
+            "expected": 0
+          },
+          "expected": "No row for ticket #2"
+        }
+      ]
+    },
+    {
+      "id": "viewer-cannot-close",
+      "name": "Viewer sees a ticket but cannot close it",
+      "intent": "Proves a viewer can read a ticket's detail page but gets no close or reopen control.",
+      "criteria": ["ac-4"],
+      "persona": "viewer",
+      "tags": ["permissions"],
+      "preconditions": {
+        "seed_profile": "default",
+        "start_path": "/tickets/1"
+      },
+      "steps": [
+        {
+          "action": "assert",
+          "description": "The ticket detail is shown",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-detail"
+          },
+          "assertion": {
+            "kind": "visible"
+          }
+        },
+        {
+          "action": "assert",
+          "description": "There is no close or reopen button",
+          "target": {
+            "strategy": "testid",
+            "value": "ticket-toggle-status"
+          },
+          "assertion": {
+            "kind": "count-equals",
+            "expected": 0
+          },
+          "expected": "No Close ticket or Reopen ticket button"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "story_id": "create-ticket",
+  "plan_sha256": "17017b1479a90a7de800742711bd0a85b321a57de095774041d3765a50ea52c2",
+  "approved_at": "2026-10-16T08:00:23.153Z",
+  "approved_via": "chat",
+  "note": "I approve all three plans (create-ticket, close-ticket, manage-roles) as written. [hash moved to the content hash after a formatting-only change; content verified identical to what was approved]"
+}
