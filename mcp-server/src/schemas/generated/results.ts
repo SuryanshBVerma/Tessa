@@ -33,7 +33,10 @@ tests: TestResult[]
 }
 export interface RunEnvironment {
 app_url: string
-commit: string
+/**
+ * HEAD commit; absent when the workspace is not a Git repository.
+ */
+commit?: string
 branch?: string
 /**
  * True when the working tree had uncommitted changes.

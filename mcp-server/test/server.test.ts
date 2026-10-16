@@ -17,16 +17,19 @@ describe('tessa-mcp server', () => {
     const { tools } = await client.listTools();
     const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
     expect(Object.keys(byName).sort()).toEqual([
+      'begin_run',
       'capture_env_state',
       'detect_stack',
       'health_check',
       'init_workspace',
       'load_config',
+      'record_step',
       'reset_db',
       'seed_db',
       'start_app',
       'stop_app',
       'validate_config',
+      'write_results',
     ]);
     expect(byName.load_config?.annotations?.readOnlyHint).toBe(true);
     expect(byName.init_workspace?.annotations?.readOnlyHint).toBe(false);

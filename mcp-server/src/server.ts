@@ -6,7 +6,19 @@ import { UnsafeDatabaseError } from './db/guard.js';
 import { SeedError, seedProfile, type SeedResult } from './db/seed.js';
 import { detectStack, loadConfig, type ConfigIssue, type ResolvedConfig } from './config/index.js';
 import { initWorkspace } from './init/index.js';
-import { captureEnvState, type Observed } from './results/env.js';
+import { captureEnvState, readGitState, type Observed } from './results/env.js';
+import { buildResults } from './runs/results.js';
+import { importScreenshot } from './runs/screenshots.js';
+import {
+  artifactsDir,
+  createRun,
+  loadPlan,
+  loadRun,
+  RunError,
+  saveRun,
+  writeAtomic,
+  type StepRecord,
+} from './runs/store.js';
 import { SERVER_NAME, SERVER_VERSION } from './version.js';
 
 const EXPORT_TARGETS = [
@@ -39,6 +51,9 @@ function failure(error: unknown): CallToolResult {
   }
   if (error instanceof UnsafeDatabaseError) {
     return result({ ok: false, refused: true, error: error.message }, true);
+  }
+  if (error instanceof RunError) {
+    return result({ ok: false, error: error.message }, true);
   }
   if (error instanceof SeedError) {
     return result(
@@ -319,6 +334,10 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         'Record the environment a test runs in: persona, seed profile, app URL and Git commit/branch/dirty state, merged with what you observed in the app (role, permissions, settings, feature flags, build). Observed values are copied as data. Call once per persona before running its tests.',
       inputSchema: {
         persona: z.string().min(1),
+        run_id: z
+          .string()
+          .optional()
+          .describe('Run from begin_run. When given, the state is stored with the run.'),
         observed: z
           .object({
             role: shortText.optional(),
@@ -333,9 +352,10 @@ export function createServer({ workspace }: ServerOptions): McpServer {
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async ({ persona, observed, host }) => {
+    async ({ persona, run_id, observed, host }) => {
       try {
-        const captured = await captureEnvState(requireConfig(), workspace, {
+        const config = requireConfig();
+        const captured = await captureEnvState(config, workspace, {
           persona,
           // zod leaves absent keys undefined; drop them so optional fields stay absent.
           ...(observed === undefined
@@ -344,9 +364,179 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           ...(host === undefined ? {} : { host }),
           lastSeededProfile: lastSeed?.profile ?? null,
         });
-        return captured.ok
-          ? result({ ok: true, ...captured.capture })
-          : result({ ok: false, issues: captured.issues }, true);
+        if (!captured.ok) {
+          return result({ ok: false, issues: captured.issues }, true);
+        }
+        if (run_id !== undefined) {
+          const ctx = { config, workspace };
+          const state = loadRun(ctx, run_id);
+          state.env_states[persona] = captured.capture.env_state;
+          const { host: capturedHost, ...environment } = captured.capture.environment;
+          state.environment = environment;
+          if (capturedHost !== undefined) {
+            state.host = capturedHost;
+          }
+          saveRun(ctx, state);
+          writeAtomic(
+            artifactsDir(ctx, 'runs', run_id, 'env-state.json'),
+            `${JSON.stringify(state.env_states, null, 2)}\n`,
+          );
+        }
+        return result({ ok: true, ...captured.capture });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  const hostEnum = z.enum(['vscode-agent', 'claude-code', 'other']);
+
+  server.registerTool(
+    'begin_run',
+    {
+      title: 'Begin a run',
+      description:
+        'Start a run of an approved plan (plans/<story>/tests.json under the artifacts root). Creates runs/<run_id>/ and returns the run id and the tests to execute, with their steps indexed from 0.',
+      inputSchema: {
+        story: z.string().min(1).describe('Story id: the folder name under plans/.'),
+        test_ids: z.array(z.string().min(1)).min(1).optional().describe('Run only these tests.'),
+        host: hostEnum.optional().describe('The agent host running this session.'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ story, test_ids, host }) => {
+      try {
+        const config = requireConfig();
+        const ctx = { config, workspace };
+        const plan = loadPlan(ctx, story);
+        const git = await readGitState(workspace);
+        const { state, tests } = createRun(
+          ctx,
+          plan,
+          { app_url: config.app.url, ...(git ?? {}) },
+          {
+            ...(test_ids === undefined ? {} : { testIds: test_ids }),
+            ...(host === undefined ? {} : { host }),
+          },
+        );
+        return result({
+          ok: true,
+          run_id: state.run_id,
+          run_dir: `${config.artifacts.root}/runs/${state.run_id}`,
+          story: plan.story,
+          app_url: config.app.url,
+          login_path: config.auth.login_path,
+          tests: tests.map((test) => ({
+            ...test,
+            steps: test.steps.map((step, index) => ({ index, ...step })),
+          })),
+        });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'record_step',
+    {
+      title: 'Record a step',
+      description:
+        'Record the outcome of one plan step. Attach the screenshot by absolute file path (where the host browser saved it) or as base64; only PNG, JPEG or WebP images under 10 MB are accepted. Recording the same test, attempt and index again replaces it.',
+      inputSchema: {
+        run_id: z.string(),
+        test_id: z.string(),
+        index: z.number().int().min(0).describe('Step index from begin_run.'),
+        status: z.enum(['passed', 'failed', 'skipped']),
+        attempt: z.number().int().min(1).max(10).optional().describe('1 unless this is a retry.'),
+        duration_ms: z.number().int().min(0).optional(),
+        expected: z.string().max(2000).optional(),
+        actual: z.string().max(2000).optional(),
+        error: z.string().max(2000).optional(),
+        selector_used: z.string().max(500).optional(),
+        screenshot: z
+          .union([
+            z.object({ path: z.string().min(1) }),
+            z.object({ data_base64: z.string().min(1) }),
+          ])
+          .optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    (args) => {
+      try {
+        const ctx = { config: requireConfig(), workspace };
+        const state = loadRun(ctx, args.run_id);
+        const records = state.steps[args.test_id];
+        if (records === undefined) {
+          throw new RunError(`run ${args.run_id} has no test "${args.test_id}"`);
+        }
+        const plan = loadPlan(ctx, state.story_id);
+        const test = plan.tests.find((t) => t.id === args.test_id);
+        if (test === undefined || args.index >= test.steps.length) {
+          throw new RunError(`test "${args.test_id}" has no step ${String(args.index)}`);
+        }
+        const attempt = args.attempt ?? 1;
+        const record: StepRecord = {
+          index: args.index,
+          attempt,
+          status: args.status,
+          ...(args.duration_ms === undefined ? {} : { duration_ms: args.duration_ms }),
+          ...(args.expected === undefined ? {} : { expected: args.expected }),
+          ...(args.actual === undefined ? {} : { actual: args.actual }),
+          ...(args.error === undefined ? {} : { error: args.error }),
+          ...(args.selector_used === undefined ? {} : { selector_used: args.selector_used }),
+        };
+        if (args.screenshot !== undefined) {
+          record.screenshot = importScreenshot(
+            artifactsDir(ctx, 'runs', args.run_id),
+            args.test_id,
+            attempt,
+            args.index,
+            args.screenshot,
+          );
+        }
+        const kept = records.filter((r) => !(r.attempt === attempt && r.index === args.index));
+        state.steps[args.test_id] = [...kept, record];
+        saveRun(ctx, state);
+        return result({ ok: true, recorded: record });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'write_results',
+    {
+      title: 'Write run results',
+      description:
+        'Assemble runs/<run_id>/results.json from the recorded steps and environment state. Test status, failure details, attempts and quality signals are computed, not supplied. Safe to call again; it rewrites the file.',
+      inputSchema: { run_id: z.string() },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ run_id }) => {
+      try {
+        const ctx = { config: requireConfig(), workspace };
+        const state = loadRun(ctx, run_id);
+        const built = buildResults(state, loadPlan(ctx, state.story_id));
+        if (!built.ok) {
+          return result({ ok: false, issues: built.issues }, true);
+        }
+        writeAtomic(
+          artifactsDir(ctx, 'runs', run_id, 'results.json'),
+          `${JSON.stringify(built.results, null, 2)}\n`,
+        );
+        return result({
+          ok: true,
+          results_path: `${ctx.config.artifacts.root}/runs/${run_id}/results.json`,
+          summary: built.results.summary,
+          tests: built.results.tests.map((t) => ({
+            test_id: t.test_id,
+            status: t.status,
+            ...(t.failure === undefined ? {} : { failure: t.failure }),
+          })),
+        });
       } catch (error) {
         return failure(error);
       }
