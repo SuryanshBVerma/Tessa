@@ -48,17 +48,17 @@ Stack adapters are the main extension point: an adapter skill plus an extractor 
 
 ## 4. MCP server: `tessa-mcp`
 
-| Group              | Tools                                                                                                                                                                |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Config             | `load_config`, `validate_config`, `detect_stack`, `init_workspace`                                                                                                   |
-| App lifecycle      | `start_app`, `stop_app`, `health_check`                                                                                                                              |
-| Database           | `seed_db(profile)`, `reset_db` — allowlisted scripts only, local hosts only                                                                                          |
-| Context            | `build_static_map`, `context_freshness`, `routes_for_feature`, `components_for_route`, `permissions_for_route`, `api_calls_for_component`, `selectors_for_component` |
-| Plans              | `save_plan`, `approve_plan`, `plan_status` — approval is recorded with the plan's hash and `begin_run` refuses unapproved or changed plans                           |
-| Evidence & results | `begin_run`, `capture_env_state`, `record_step`, `write_results`                                                                                                     |
-| Review             | `render_report`, `serve_review`, `get_selection`, `record_selection`, `stop_review`                                                                                  |
-| Runs               | `list_runs`, `diff_runs`, `failed_test_ids`                                                                                                                          |
-| Export             | `emit_tests(selection, target)`, `validate_export`                                                                                                                   |
+| Group              | Tools                                                                                                                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Config             | `load_config`, `validate_config`, `detect_stack`, `init_workspace`                                                                                                                                    |
+| App lifecycle      | `start_app`, `stop_app`, `health_check`                                                                                                                                                               |
+| Database           | `seed_db(profile)`, `reset_db` — allowlisted scripts only, local hosts only                                                                                                                           |
+| Context            | `build_static_map`, `context_freshness`, `routes_for_feature`, `components_for_route`, `permissions_for_route`, `api_calls_for_component`, `selectors_for_component`, `story_context`, `record_crawl` |
+| Plans              | `save_plan`, `approve_plan`, `plan_status` — approval is recorded with the plan's hash and `begin_run` refuses unapproved or changed plans                                                            |
+| Evidence & results | `begin_run`, `capture_env_state`, `record_step`, `write_results`                                                                                                                                      |
+| Review             | `render_report`, `serve_review`, `get_selection`, `record_selection`, `stop_review`                                                                                                                   |
+| Runs               | `list_runs`, `diff_runs`, `failed_test_ids`                                                                                                                                                           |
+| Export             | `emit_tests(selection, target)`, `validate_export`                                                                                                                                                    |
 
 Internal modules: static extractor + framework adapters (ts-morph / tree-sitter), context query
 router, report renderer (fixed HTML/CSS/JS template), review server, emitters per target, run diff
@@ -93,6 +93,8 @@ Agents depend only on the five context query tools. Config chooses who answers t
 
 - `builtin` — the generated static map (default).
 - `external` — the team's existing knowledge graph via its MCP server, mapped by `kg-mapping.yaml`.
+  `tessa-mcp` does not connect to that server: the query tool returns the tool to call and its
+  arguments, and the agent makes the call with the host's own MCP client.
 - `hybrid` — external first, built-in fills gaps (e.g. selectors, guards).
 
 `context_freshness` warns in the report when the graph's indexed commit lags HEAD by more than `max_staleness_commits`.

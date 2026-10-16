@@ -73,11 +73,16 @@ variable name, and the executor will ask the user to type the value.
 5. `text`: visible text, only when nothing above exists.
 6. `css`: last resort. `save_plan` warns about it.
 
-Take selectors from the code, not from memory. Until Tessa's context tools exist, read the
-route and component files for the feature, within `context.static_map.include` from config,
-and note the `data-testid`, roles and labels the elements really have. If the element you
-need has no stable selector, use the best available and add an open question suggesting a
-`data-testid`.
+Take selectors from the app, never from memory. Use `story_context` and
+`selectors_for_component` (the `ui-flow-discovery` skill) for the real routes, `data-testid`
+values, roles and labels. Only if the context tools cannot answer, read the route and
+component files within `context.static_map.include`. A pattern such as `ticket-row-*` means you
+pick a concrete id from the seed data (`ticket-row-2`). If the element you need has no stable
+selector, use the best available and add an open question suggesting a `data-testid`.
+
+`save_plan` checks every target and path against the frontend map and warns about any it
+cannot find. Treat those warnings as mistakes to fix, unless you can name why the map cannot
+see the element (it comes from a package, or its id is computed).
 
 ### Assertions
 

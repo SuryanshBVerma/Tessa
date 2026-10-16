@@ -102,3 +102,11 @@ export const SAMPLE_INIT = {
   ],
   export_target: 'playwright-ts',
 };
+
+/** A copy of the sample app with its real Tessa config, ready for context tools. */
+export function initialisedSample(): string {
+  const workspace = sampleWorkspace();
+  mkdirSync(join(workspace, '.tessa'), { recursive: true });
+  cpSync(join(SAMPLE_APP, '.tessa', 'config.yaml'), join(workspace, '.tessa', 'config.yaml'));
+  return workspace;
+}

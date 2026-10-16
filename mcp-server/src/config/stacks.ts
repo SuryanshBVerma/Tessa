@@ -1,8 +1,10 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-/** Stack adapters that ship with Tessa. Add a name here when its adapter lands. */
-export const KNOWN_ADAPTERS: readonly string[] = ['react-router'];
+import { ADAPTERS } from '../context/adapters/index.js';
+
+/** Stack adapters that ship with Tessa, from the adapter registry. */
+export const KNOWN_ADAPTERS: readonly string[] = Object.keys(ADAPTERS);
 
 export type ExportTarget =
   'playwright-ts' | 'playwright-dotnet' | 'cypress-ts' | 'selenium-csharp' | 'selenium-java';

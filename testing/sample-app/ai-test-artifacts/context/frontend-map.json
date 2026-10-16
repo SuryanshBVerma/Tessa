@@ -1,0 +1,1216 @@
+{
+  "version": 1,
+  "adapter": "react-router",
+  "extractor_version": 3,
+  "built_at": "2026-10-16T09:24:16.068Z",
+  "commit": "0f157f7a8fc019d78d9b658f05ca3f4dd164972d",
+  "include": ["app/**"],
+  "exclude": ["**/*.test.*", "**/*.stories.*"],
+  "routes": [
+    {
+      "id": "app/routes/login.tsx",
+      "path": "/login",
+      "file": "app/routes/login.tsx",
+      "kind": "route",
+      "children": []
+    },
+    {
+      "id": "app/routes/logout.tsx",
+      "path": "/logout",
+      "file": "app/routes/logout.tsx",
+      "kind": "route",
+      "children": []
+    },
+    {
+      "id": "app/routes/app-layout.tsx",
+      "path": "/",
+      "file": "app/routes/app-layout.tsx",
+      "kind": "layout",
+      "children": [
+        "app/routes/home.tsx#index",
+        "app/routes/tickets.tsx",
+        "app/routes/ticket-new.tsx",
+        "app/routes/ticket.tsx",
+        "app/routes/settings.tsx",
+        "app/routes/admin-users.tsx"
+      ]
+    },
+    {
+      "id": "app/routes/home.tsx#index",
+      "path": "/",
+      "file": "app/routes/home.tsx",
+      "kind": "index",
+      "children": [],
+      "parent": "app/routes/app-layout.tsx"
+    },
+    {
+      "id": "app/routes/tickets.tsx",
+      "path": "/tickets",
+      "file": "app/routes/tickets.tsx",
+      "kind": "route",
+      "children": [],
+      "parent": "app/routes/app-layout.tsx"
+    },
+    {
+      "id": "app/routes/ticket-new.tsx",
+      "path": "/tickets/new",
+      "file": "app/routes/ticket-new.tsx",
+      "kind": "route",
+      "children": [],
+      "parent": "app/routes/app-layout.tsx"
+    },
+    {
+      "id": "app/routes/ticket.tsx",
+      "path": "/tickets/:ticketId",
+      "file": "app/routes/ticket.tsx",
+      "kind": "route",
+      "children": [],
+      "parent": "app/routes/app-layout.tsx"
+    },
+    {
+      "id": "app/routes/settings.tsx",
+      "path": "/settings",
+      "file": "app/routes/settings.tsx",
+      "kind": "route",
+      "children": [],
+      "parent": "app/routes/app-layout.tsx"
+    },
+    {
+      "id": "app/routes/admin-users.tsx",
+      "path": "/admin/users",
+      "file": "app/routes/admin-users.tsx",
+      "kind": "route",
+      "children": [],
+      "parent": "app/routes/app-layout.tsx"
+    }
+  ],
+  "modules": {
+    "app/root.tsx": {
+      "file": "app/root.tsx",
+      "exports": ["ErrorBoundary", "default", "links"],
+      "selectors": [
+        {
+          "kind": "testid",
+          "value": "error-page",
+          "pattern": false,
+          "element": "main",
+          "line": 46
+        },
+        {
+          "kind": "role",
+          "value": "alert",
+          "pattern": false,
+          "element": "p",
+          "line": 48
+        },
+        {
+          "kind": "text",
+          "value": "Back to tickets",
+          "pattern": false,
+          "element": "a",
+          "line": 49
+        }
+      ],
+      "guards": [],
+      "links": [
+        {
+          "kind": "link",
+          "to": "/tickets",
+          "pattern": false,
+          "line": 49
+        }
+      ],
+      "api": [],
+      "flags": [],
+      "imports": []
+    },
+    "app/routes/login.tsx": {
+      "file": "app/routes/login.tsx",
+      "exports": ["action", "default", "loader"],
+      "selectors": [
+        {
+          "kind": "text",
+          "value": "Sign in",
+          "pattern": false,
+          "element": "h1",
+          "line": 34
+        },
+        {
+          "kind": "testid",
+          "value": "login-form",
+          "pattern": false,
+          "element": "Form",
+          "line": 35
+        },
+        {
+          "kind": "aria-label",
+          "value": "Sign in",
+          "pattern": false,
+          "element": "Form",
+          "line": 35
+        },
+        {
+          "kind": "label",
+          "value": "Username",
+          "pattern": false,
+          "element": "label",
+          "line": 37
+        },
+        {
+          "kind": "testid",
+          "value": "login-username",
+          "pattern": false,
+          "element": "input",
+          "line": 39
+        },
+        {
+          "kind": "label",
+          "value": "Password",
+          "pattern": false,
+          "element": "label",
+          "line": 41
+        },
+        {
+          "kind": "testid",
+          "value": "login-password",
+          "pattern": false,
+          "element": "input",
+          "line": 43
+        },
+        {
+          "kind": "testid",
+          "value": "login-error",
+          "pattern": false,
+          "element": "p",
+          "line": 52
+        },
+        {
+          "kind": "role",
+          "value": "alert",
+          "pattern": false,
+          "element": "p",
+          "line": 52
+        },
+        {
+          "kind": "testid",
+          "value": "login-submit",
+          "pattern": false,
+          "element": "button",
+          "line": 56
+        },
+        {
+          "kind": "text",
+          "value": "Signing in…",
+          "pattern": false,
+          "element": "button",
+          "line": 56
+        },
+        {
+          "kind": "text",
+          "value": "Sign in",
+          "pattern": false,
+          "element": "button",
+          "line": 56
+        }
+      ],
+      "guards": [],
+      "links": [
+        {
+          "kind": "redirect",
+          "to": "/tickets",
+          "pattern": false,
+          "line": 8
+        }
+      ],
+      "api": [
+        {
+          "kind": "form",
+          "method": "POST",
+          "url": "(this route)",
+          "pattern": false,
+          "line": 35
+        }
+      ],
+      "flags": [],
+      "imports": ["app/lib/auth.server.ts", "app/lib/redirect.ts"]
+    },
+    "app/routes/logout.tsx": {
+      "file": "app/routes/logout.tsx",
+      "exports": ["action", "loader"],
+      "selectors": [],
+      "guards": [],
+      "links": [
+        {
+          "kind": "redirect",
+          "to": "/tickets",
+          "pattern": false,
+          "line": 6
+        }
+      ],
+      "api": [],
+      "flags": [],
+      "imports": ["app/lib/auth.server.ts"]
+    },
+    "app/routes/app-layout.tsx": {
+      "file": "app/routes/app-layout.tsx",
+      "exports": ["default", "loader"],
+      "selectors": [
+        {
+          "kind": "testid",
+          "value": "main-nav",
+          "pattern": false,
+          "element": "nav",
+          "line": 20
+        },
+        {
+          "kind": "aria-label",
+          "value": "Main",
+          "pattern": false,
+          "element": "nav",
+          "line": 20
+        },
+        {
+          "kind": "testid",
+          "value": "nav-tickets",
+          "pattern": false,
+          "element": "NavLink",
+          "line": 21
+        },
+        {
+          "kind": "text",
+          "value": "Tickets",
+          "pattern": false,
+          "element": "NavLink",
+          "line": 21
+        },
+        {
+          "kind": "testid",
+          "value": "nav-new-ticket",
+          "pattern": false,
+          "element": "NavLink",
+          "line": 25
+        },
+        {
+          "kind": "text",
+          "value": "New ticket",
+          "pattern": false,
+          "element": "NavLink",
+          "line": 25
+        },
+        {
+          "kind": "testid",
+          "value": "nav-settings",
+          "pattern": false,
+          "element": "NavLink",
+          "line": 29
+        },
+        {
+          "kind": "text",
+          "value": "Settings",
+          "pattern": false,
+          "element": "NavLink",
+          "line": 29
+        },
+        {
+          "kind": "testid",
+          "value": "nav-admin-users",
+          "pattern": false,
+          "element": "NavLink",
+          "line": 33
+        },
+        {
+          "kind": "text",
+          "value": "Users",
+          "pattern": false,
+          "element": "NavLink",
+          "line": 33
+        },
+        {
+          "kind": "testid",
+          "value": "current-user",
+          "pattern": false,
+          "element": "span",
+          "line": 39
+        },
+        {
+          "kind": "testid",
+          "value": "logout",
+          "pattern": false,
+          "element": "button",
+          "line": 43
+        },
+        {
+          "kind": "text",
+          "value": "Sign out",
+          "pattern": false,
+          "element": "button",
+          "line": 43
+        }
+      ],
+      "guards": [
+        {
+          "call": "requireUser",
+          "args": [],
+          "in": "loader",
+          "line": 7
+        },
+        {
+          "call": "can",
+          "args": ["tickets:create"],
+          "in": "loader",
+          "line": 10
+        },
+        {
+          "call": "can",
+          "args": ["users:manage"],
+          "in": "loader",
+          "line": 11
+        }
+      ],
+      "links": [
+        {
+          "kind": "link",
+          "to": "/tickets",
+          "pattern": false,
+          "line": 21
+        },
+        {
+          "kind": "link",
+          "to": "/tickets/new",
+          "pattern": false,
+          "line": 25
+        },
+        {
+          "kind": "link",
+          "to": "/settings",
+          "pattern": false,
+          "line": 29
+        },
+        {
+          "kind": "link",
+          "to": "/admin/users",
+          "pattern": false,
+          "line": 33
+        },
+        {
+          "kind": "form",
+          "to": "/logout",
+          "pattern": false,
+          "method": "POST",
+          "line": 42
+        }
+      ],
+      "api": [
+        {
+          "kind": "form",
+          "method": "POST",
+          "url": "/logout",
+          "pattern": false,
+          "line": 42
+        }
+      ],
+      "flags": [],
+      "imports": ["app/lib/auth.server.ts", "app/lib/permissions.ts"]
+    },
+    "app/routes/home.tsx": {
+      "file": "app/routes/home.tsx",
+      "exports": ["loader"],
+      "selectors": [],
+      "guards": [],
+      "links": [
+        {
+          "kind": "redirect",
+          "to": "/tickets",
+          "pattern": false,
+          "line": 4
+        }
+      ],
+      "api": [],
+      "flags": [],
+      "imports": []
+    },
+    "app/routes/tickets.tsx": {
+      "file": "app/routes/tickets.tsx",
+      "exports": ["default", "loader"],
+      "selectors": [
+        {
+          "kind": "text",
+          "value": "Tickets",
+          "pattern": false,
+          "element": "h1",
+          "line": 46
+        },
+        {
+          "kind": "testid",
+          "value": "create-ticket",
+          "pattern": false,
+          "element": "Link",
+          "line": 48
+        },
+        {
+          "kind": "text",
+          "value": "New ticket",
+          "pattern": false,
+          "element": "Link",
+          "line": 48
+        },
+        {
+          "kind": "label",
+          "value": "Status",
+          "pattern": false,
+          "element": "label",
+          "line": 53
+        },
+        {
+          "kind": "testid",
+          "value": "status-filter",
+          "pattern": false,
+          "element": "select",
+          "line": 55
+        },
+        {
+          "kind": "testid",
+          "value": "tickets-empty",
+          "pattern": false,
+          "element": "p",
+          "line": 70
+        },
+        {
+          "kind": "testid",
+          "value": "tickets-table",
+          "pattern": false,
+          "element": "table",
+          "line": 72
+        },
+        {
+          "kind": "text",
+          "value": "#",
+          "pattern": false,
+          "element": "th",
+          "line": 75
+        },
+        {
+          "kind": "text",
+          "value": "Title",
+          "pattern": false,
+          "element": "th",
+          "line": 76
+        },
+        {
+          "kind": "text",
+          "value": "Status",
+          "pattern": false,
+          "element": "th",
+          "line": 77
+        },
+        {
+          "kind": "text",
+          "value": "Priority",
+          "pattern": false,
+          "element": "th",
+          "line": 78
+        },
+        {
+          "kind": "text",
+          "value": "Author",
+          "pattern": false,
+          "element": "th",
+          "line": 79
+        },
+        {
+          "kind": "testid",
+          "value": "ticket-row-*",
+          "pattern": true,
+          "element": "tr",
+          "line": 84
+        }
+      ],
+      "guards": [
+        {
+          "call": "requirePermission",
+          "args": ["tickets:read"],
+          "in": "loader",
+          "line": 19
+        },
+        {
+          "call": "can",
+          "args": ["tickets:create"],
+          "in": "loader",
+          "line": 35
+        }
+      ],
+      "links": [
+        {
+          "kind": "link",
+          "to": "/tickets/new",
+          "pattern": false,
+          "line": 48
+        },
+        {
+          "kind": "link",
+          "to": "/tickets/*",
+          "pattern": true,
+          "line": 87
+        }
+      ],
+      "api": [],
+      "flags": [
+        {
+          "name": "ticket_priority",
+          "line": 34
+        }
+      ],
+      "imports": [
+        "app/lib/auth.server.ts",
+        "app/lib/db.server.ts",
+        "app/lib/flags.server.ts",
+        "app/lib/permissions.ts"
+      ]
+    },
+    "app/routes/ticket-new.tsx": {
+      "file": "app/routes/ticket-new.tsx",
+      "exports": ["action", "default", "loader"],
+      "selectors": [
+        {
+          "kind": "text",
+          "value": "New ticket",
+          "pattern": false,
+          "element": "h1",
+          "line": 36
+        },
+        {
+          "kind": "testid",
+          "value": "ticket-form",
+          "pattern": false,
+          "element": "Form",
+          "line": 37
+        },
+        {
+          "kind": "label",
+          "value": "Title",
+          "pattern": false,
+          "element": "label",
+          "line": 38
+        },
+        {
+          "kind": "testid",
+          "value": "ticket-title",
+          "pattern": false,
+          "element": "input",
+          "line": 40
+        },
+        {
+          "kind": "testid",
+          "value": "ticket-title-error",
+          "pattern": false,
+          "element": "p",
+          "line": 51
+        },
+        {
+          "kind": "role",
+          "value": "alert",
+          "pattern": false,
+          "element": "p",
+          "line": 51
+        },
+        {
+          "kind": "label",
+          "value": "Description",
+          "pattern": false,
+          "element": "label",
+          "line": 55
+        },
+        {
+          "kind": "testid",
+          "value": "ticket-description",
+          "pattern": false,
+          "element": "textarea",
+          "line": 57
+        },
+        {
+          "kind": "label",
+          "value": "Priority",
+          "pattern": false,
+          "element": "label",
+          "line": 60
+        },
+        {
+          "kind": "testid",
+          "value": "ticket-priority",
+          "pattern": false,
+          "element": "select",
+          "line": 62
+        },
+        {
+          "kind": "testid",
+          "value": "ticket-submit",
+          "pattern": false,
+          "element": "button",
+          "line": 69
+        },
+        {
+          "kind": "text",
+          "value": "Create ticket",
+          "pattern": false,
+          "element": "button",
+          "line": 69
+        }
+      ],
+      "guards": [
+        {
+          "call": "requirePermission",
+          "args": ["tickets:create"],
+          "in": "loader",
+          "line": 9
+        },
+        {
+          "call": "requirePermission",
+          "args": ["tickets:create"],
+          "in": "action",
+          "line": 15
+        }
+      ],
+      "links": [
+        {
+          "kind": "redirect",
+          "to": "/tickets/*",
+          "pattern": true,
+          "line": 29
+        }
+      ],
+      "api": [
+        {
+          "kind": "form",
+          "method": "POST",
+          "url": "(this route)",
+          "pattern": false,
+          "line": 37
+        }
+      ],
+      "flags": [
+        {
+          "name": "ticket_priority",
+          "line": 11
+        }
+      ],
+      "imports": [
+        "app/lib/auth.server.ts",
+        "app/lib/db.server.ts",
+        "app/lib/flags.server.ts",
+        "app/lib/tickets.ts"
+      ]
+    },
+    "app/routes/ticket.tsx": {
+      "file": "app/routes/ticket.tsx",
+      "exports": ["action", "default", "loader"],
+      "selectors": [
+        {
+          "kind": "testid",
+          "value": "ticket-detail",
+          "pattern": false,
+          "element": "article",
+          "line": 68
+        },
+        {
+          "kind": "text",
+          "value": "← All tickets",
+          "pattern": false,
+          "element": "Link",
+          "line": 70
+        },
+        {
+          "kind": "text",
+          "value": "#",
+          "pattern": false,
+          "element": "h1",
+          "line": 72
+        },
+        {
+          "kind": "testid",
+          "value": "ticket-status",
+          "pattern": false,
+          "element": "span",
+          "line": 78
+        },
+        {
+          "kind": "testid",
+          "value": "ticket-priority-value",
+          "pattern": false,
+          "element": "dd",
+          "line": 85
+        },
+        {
+          "kind": "testid",
+          "value": "ticket-description-value",
+          "pattern": false,
+          "element": "p",
+          "line": 95
+        },
+        {
+          "kind": "testid",
+          "value": "ticket-toggle-status",
+          "pattern": false,
+          "element": "button",
+          "line": 98
+        },
+        {
+          "kind": "text",
+          "value": "Close ticket",
+          "pattern": false,
+          "element": "button",
+          "line": 98
+        },
+        {
+          "kind": "text",
+          "value": "Reopen ticket",
+          "pattern": false,
+          "element": "button",
+          "line": 98
+        }
+      ],
+      "guards": [
+        {
+          "call": "requirePermission",
+          "args": ["tickets:read"],
+          "in": "loader",
+          "line": 27
+        },
+        {
+          "call": "can",
+          "args": ["tickets:close"],
+          "in": "loader",
+          "line": 46
+        },
+        {
+          "call": "requirePermission",
+          "args": ["tickets:close"],
+          "in": "action",
+          "line": 51
+        }
+      ],
+      "links": [
+        {
+          "kind": "link",
+          "to": "/tickets",
+          "pattern": false,
+          "line": 70
+        }
+      ],
+      "api": [
+        {
+          "kind": "form",
+          "method": "POST",
+          "url": "(this route)",
+          "pattern": false,
+          "line": 97
+        }
+      ],
+      "flags": [
+        {
+          "name": "ticket_priority",
+          "line": 45
+        }
+      ],
+      "imports": [
+        "app/lib/auth.server.ts",
+        "app/lib/db.server.ts",
+        "app/lib/flags.server.ts",
+        "app/lib/permissions.ts"
+      ]
+    },
+    "app/routes/settings.tsx": {
+      "file": "app/routes/settings.tsx",
+      "exports": ["action", "default", "loader"],
+      "selectors": [
+        {
+          "kind": "text",
+          "value": "Settings",
+          "pattern": false,
+          "element": "h1",
+          "line": 27
+        },
+        {
+          "kind": "testid",
+          "value": "settings-form",
+          "pattern": false,
+          "element": "Form",
+          "line": 28
+        },
+        {
+          "kind": "text",
+          "value": "Theme",
+          "pattern": false,
+          "element": "legend",
+          "line": 30
+        },
+        {
+          "kind": "testid",
+          "value": "theme-*",
+          "pattern": true,
+          "element": "input",
+          "line": 33
+        },
+        {
+          "kind": "testid",
+          "value": "settings-save",
+          "pattern": false,
+          "element": "button",
+          "line": 44
+        },
+        {
+          "kind": "text",
+          "value": "Save",
+          "pattern": false,
+          "element": "button",
+          "line": 44
+        },
+        {
+          "kind": "testid",
+          "value": "settings-saved",
+          "pattern": false,
+          "element": "p",
+          "line": 48
+        },
+        {
+          "kind": "role",
+          "value": "status",
+          "pattern": false,
+          "element": "p",
+          "line": 48
+        },
+        {
+          "kind": "text",
+          "value": "Your permissions",
+          "pattern": false,
+          "element": "h2",
+          "line": 53
+        },
+        {
+          "kind": "testid",
+          "value": "permission-list",
+          "pattern": false,
+          "element": "ul",
+          "line": 54
+        }
+      ],
+      "guards": [
+        {
+          "call": "requireUser",
+          "args": [],
+          "in": "loader",
+          "line": 8
+        },
+        {
+          "call": "requireUser",
+          "args": [],
+          "in": "action",
+          "line": 13
+        }
+      ],
+      "links": [],
+      "api": [
+        {
+          "kind": "form",
+          "method": "POST",
+          "url": "(this route)",
+          "pattern": false,
+          "line": 28
+        }
+      ],
+      "flags": [],
+      "imports": ["app/lib/auth.server.ts", "app/lib/db.server.ts", "app/lib/permissions.ts"]
+    },
+    "app/routes/admin-users.tsx": {
+      "file": "app/routes/admin-users.tsx",
+      "exports": ["action", "default", "loader"],
+      "selectors": [
+        {
+          "kind": "text",
+          "value": "Users",
+          "pattern": false,
+          "element": "h1",
+          "line": 43
+        },
+        {
+          "kind": "testid",
+          "value": "users-error",
+          "pattern": false,
+          "element": "p",
+          "line": 45
+        },
+        {
+          "kind": "role",
+          "value": "alert",
+          "pattern": false,
+          "element": "p",
+          "line": 45
+        },
+        {
+          "kind": "testid",
+          "value": "users-table",
+          "pattern": false,
+          "element": "table",
+          "line": 49
+        },
+        {
+          "kind": "text",
+          "value": "Username",
+          "pattern": false,
+          "element": "th",
+          "line": 52
+        },
+        {
+          "kind": "text",
+          "value": "Name",
+          "pattern": false,
+          "element": "th",
+          "line": 53
+        },
+        {
+          "kind": "text",
+          "value": "Active",
+          "pattern": false,
+          "element": "th",
+          "line": 54
+        },
+        {
+          "kind": "text",
+          "value": "Role",
+          "pattern": false,
+          "element": "th",
+          "line": 55
+        },
+        {
+          "kind": "testid",
+          "value": "user-row-*",
+          "pattern": true,
+          "element": "tr",
+          "line": 60
+        },
+        {
+          "kind": "testid",
+          "value": "role-select-*",
+          "pattern": true,
+          "element": "select",
+          "line": 67
+        },
+        {
+          "kind": "aria-label",
+          "value": "Role for *",
+          "pattern": true,
+          "element": "select",
+          "line": 67
+        },
+        {
+          "kind": "testid",
+          "value": "role-save-*",
+          "pattern": true,
+          "element": "button",
+          "line": 80
+        },
+        {
+          "kind": "text",
+          "value": "Save",
+          "pattern": false,
+          "element": "button",
+          "line": 80
+        }
+      ],
+      "guards": [
+        {
+          "call": "requirePermission",
+          "args": ["users:manage"],
+          "in": "loader",
+          "line": 16
+        },
+        {
+          "call": "requirePermission",
+          "args": ["users:manage"],
+          "in": "action",
+          "line": 24
+        }
+      ],
+      "links": [],
+      "api": [
+        {
+          "kind": "form",
+          "method": "POST",
+          "url": "(this route)",
+          "pattern": false,
+          "line": 65
+        }
+      ],
+      "flags": [],
+      "imports": ["app/lib/auth.server.ts", "app/lib/db.server.ts", "app/lib/permissions.ts"]
+    },
+    "app/lib/auth.server.ts": {
+      "file": "app/lib/auth.server.ts",
+      "exports": [],
+      "selectors": [],
+      "guards": [
+        {
+          "call": "requireEnv",
+          "args": ["SAMPLE_APP_PASSWORD"],
+          "in": "passwordMatches",
+          "line": 44
+        },
+        {
+          "call": "requireUser",
+          "args": [],
+          "in": "requirePermission",
+          "line": 83
+        },
+        {
+          "call": "can",
+          "args": [],
+          "in": "requirePermission",
+          "line": 84
+        }
+      ],
+      "links": [
+        {
+          "kind": "redirect",
+          "to": "/login?*",
+          "pattern": true,
+          "line": 77
+        },
+        {
+          "kind": "redirect",
+          "to": "/login",
+          "pattern": false,
+          "line": 100
+        }
+      ],
+      "api": [],
+      "flags": [],
+      "imports": [
+        "app/lib/db.server.ts",
+        "app/lib/env.server.ts",
+        "app/lib/permissions.ts",
+        "app/lib/session.server.ts"
+      ]
+    },
+    "app/lib/redirect.ts": {
+      "file": "app/lib/redirect.ts",
+      "exports": [],
+      "selectors": [],
+      "guards": [],
+      "links": [],
+      "api": [],
+      "flags": [],
+      "imports": []
+    },
+    "app/lib/permissions.ts": {
+      "file": "app/lib/permissions.ts",
+      "exports": [],
+      "selectors": [],
+      "guards": [],
+      "links": [],
+      "api": [],
+      "flags": [],
+      "imports": []
+    },
+    "app/lib/db.server.ts": {
+      "file": "app/lib/db.server.ts",
+      "exports": [],
+      "selectors": [],
+      "guards": [
+        {
+          "call": "requireEnv",
+          "args": ["DATABASE_URL"],
+          "in": "getPool",
+          "line": 9
+        },
+        {
+          "call": "assertLocalDatabaseUrl",
+          "args": [],
+          "in": "getPool",
+          "line": 10
+        }
+      ],
+      "links": [],
+      "api": [],
+      "flags": [],
+      "imports": ["app/lib/env.server.ts", "app/lib/local-host.ts"]
+    },
+    "app/lib/flags.server.ts": {
+      "file": "app/lib/flags.server.ts",
+      "exports": [],
+      "selectors": [],
+      "guards": [],
+      "links": [],
+      "api": [],
+      "flags": [],
+      "imports": ["app/lib/db.server.ts"]
+    },
+    "app/lib/tickets.ts": {
+      "file": "app/lib/tickets.ts",
+      "exports": [],
+      "selectors": [],
+      "guards": [],
+      "links": [],
+      "api": [],
+      "flags": [],
+      "imports": []
+    },
+    "app/lib/env.server.ts": {
+      "file": "app/lib/env.server.ts",
+      "exports": [],
+      "selectors": [],
+      "guards": [],
+      "links": [],
+      "api": [],
+      "flags": [],
+      "imports": []
+    },
+    "app/lib/session.server.ts": {
+      "file": "app/lib/session.server.ts",
+      "exports": [],
+      "selectors": [],
+      "guards": [
+        {
+          "call": "requireEnv",
+          "args": ["SESSION_SECRET"],
+          "in": "module",
+          "line": 21
+        }
+      ],
+      "links": [],
+      "api": [],
+      "flags": [],
+      "imports": ["app/lib/env.server.ts"]
+    },
+    "app/lib/local-host.ts": {
+      "file": "app/lib/local-host.ts",
+      "exports": [],
+      "selectors": [],
+      "guards": [],
+      "links": [],
+      "api": [],
+      "flags": [],
+      "imports": []
+    }
+  },
+  "files": {
+    "app/root.tsx": "977b4ac80602b6fb3dc83b1affa275eb75fab3938a927c3e923bf4d71909e7df",
+    "app/routes/login.tsx": "976ff7a5a2c9d92d1a34776fce474c2a1b0c7e0de7e7a2bc79b33ef142ce805e",
+    "app/routes/logout.tsx": "7c35993cda4773a4b651936a7031f0dd2de28e85a22c9c60e8d660637121fb94",
+    "app/routes/app-layout.tsx": "32cbc2e1b89e095b72edcc5da7a8b63d46e785f3416a73ea4b7af189f20c3016",
+    "app/routes/home.tsx": "142fb477e4ed59b8937f8676a7122c82e763109f4f34fca1092bea4189989254",
+    "app/routes/tickets.tsx": "970f013f3f570ae5f82efbf945b0048d163b51043718793066c75c2d5923ccd0",
+    "app/routes/ticket-new.tsx": "df8eb869e9c01380c16447404c66fe8dd3815db5017cbbb3b2aeca3736373906",
+    "app/routes/ticket.tsx": "9b1f54e6d2cddf366e40f35c64cb7e078bd5d16f118d5f7c8201ab1510afbfe5",
+    "app/routes/settings.tsx": "c42aea8a49ba6be67f5ac476f06ca0a3d5c13431ef50ff2e7a918cbcbf83c7cb",
+    "app/routes/admin-users.tsx": "14237e516e1038cca600cd936d0acb5cd001c0e46b7c2c090abd10c8a47cba0e",
+    "app/lib/auth.server.ts": "94aaadbfb61138b4e0053019f07610d6e1b825a5d838ae641978cb9bd0660e70",
+    "app/lib/redirect.ts": "382578ada6da9b826897e53b357f5aa1e76edfa939a5906a08d514dc5158e8c3",
+    "app/lib/permissions.ts": "b54addd2ccec529df6da40c86a906cf655bf318ffeb43760c3bff5f38e2ed018",
+    "app/lib/db.server.ts": "759e4926c39a21de05359ff75e97068f923f0ad0c69838ceb3d43906a62a6a41",
+    "app/lib/flags.server.ts": "fefdc57f1062a7c5db8f2ddf3f591d19e05bd5bda751eec8dce0d283d5818d18",
+    "app/lib/tickets.ts": "d2a8fc2f566ae5e457e21663d260c7a6c7247df542d79e030db11868ed2c5683",
+    "app/lib/env.server.ts": "be59f3dced894742bfbf00e90e505cc38a5d5a5d14ead1d045a9889b56bfb820",
+    "app/lib/session.server.ts": "980d9dc5de98ad001dec57d78d364d7afe86ad92392e0c2b3614ae400bb4f3f9",
+    "app/lib/local-host.ts": "1105d184bb39a9fac68cc6eeae1904ed10d478013dba203908baffb9e9405cd0"
+  },
+  "warnings": []
+}

@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "personas": {
+    "admin": {
+      "crawled_at": "2026-10-16T09:37:33.072Z",
+      "pages": [
+        {
+          "path": "/tickets",
+          "title": "Tessa Sample Tickets",
+          "links": [
+            "/tickets",
+            "/tickets/new",
+            "/settings",
+            "/admin/users",
+            "/tickets/1",
+            "/tickets/2",
+            "/tickets/3"
+          ],
+          "testids": [
+            "main-nav",
+            "nav-tickets",
+            "nav-new-ticket",
+            "nav-settings",
+            "nav-admin-users",
+            "current-user",
+            "logout",
+            "create-ticket",
+            "status-filter",
+            "tickets-table",
+            "ticket-row-1",
+            "ticket-row-2",
+            "ticket-row-3"
+          ],
+          "roles": []
+        },
+        {
+          "path": "/tickets/new",
+          "title": "Tessa Sample Tickets",
+          "links": [
+            "/tickets",
+            "/tickets/new",
+            "/settings",
+            "/admin/users"
+          ],
+          "testids": [
+            "main-nav",
+            "nav-tickets",
+            "nav-new-ticket",
+            "nav-settings",
+            "nav-admin-users",
+            "current-user",
+            "logout",
+            "ticket-form",
+            "ticket-title",
+            "ticket-description",
+            "ticket-priority",
+            "ticket-submit"
+          ],
+          "roles": []
+        },
+        {
+          "path": "/settings",
+          "title": "Tessa Sample Tickets",
+          "links": [
+            "/tickets",
+            "/tickets/new",
+            "/settings",
+            "/admin/users"
+          ],
+          "testids": [
+            "main-nav",
+            "nav-tickets",
+            "nav-new-ticket",
+            "nav-settings",
+            "nav-admin-users",
+            "current-user",
+            "logout",
+            "settings-form",
+            "theme-light",
+            "theme-dark",
+            "settings-save",
+            "permission-list"
+          ],
+          "roles": []
+        },
+        {
+          "path": "/admin/users",
+          "title": "Tessa Sample Tickets",
+          "links": [
+            "/tickets",
+            "/tickets/new",
+            "/settings",
+            "/admin/users"
+          ],
+          "testids": [
+            "main-nav",
+            "nav-tickets",
+            "nav-new-ticket",
+            "nav-settings",
+            "nav-admin-users",
+            "current-user",
+            "logout",
+            "users-table",
+            "user-row-admin",
+            "role-select-admin",
+            "role-save-admin",
+            "user-row-admin2",
+            "role-select-admin2",
+            "role-save-admin2",
+            "user-row-admin3",
+            "role-select-admin3",
+            "role-save-admin3",
+            "user-row-viewer",
+            "role-select-viewer",
+            "role-save-viewer"
+          ],
+          "roles": []
+        },
+        {
+          "path": "/tickets/1",
+          "title": "Tessa Sample Tickets",
+          "links": [
+            "/tickets",
+            "/tickets/new",
+            "/settings",
+            "/admin/users"
+          ],
+          "testids": [
+            "main-nav",
+            "nav-tickets",
+            "nav-new-ticket",
+            "nav-settings",
+            "nav-admin-users",
+            "current-user",
+            "logout",
+            "ticket-detail",
+            "ticket-status",
+            "ticket-priority-value",
+            "ticket-description-value",
+            "ticket-toggle-status"
+          ],
+          "roles": []
+        }
+      ]
+    }
+  }
+}

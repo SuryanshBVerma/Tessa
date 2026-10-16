@@ -1,0 +1,32 @@
+# Maps Tessa's context queries to tools on your team's knowledge-graph MCP server.
+# Used when context.knowledge_graph.mode is external or hybrid. tessa-mcp never calls the
+# server itself: it tells the agent which tool to call, with these arguments, and the agent's
+# host makes the call.
+#
+# Placeholders in args are replaced with the query's inputs: {query}, {route}, {file}.
+# Leave a query out to answer it from Tessa's built-in map.
+version: 1
+
+# The knowledge-graph MCP server's name in your host. Defaults to context.knowledge_graph.mcp_server.
+server: frontend-kg
+
+queries:
+  routes_for_feature:
+    tool: search_routes
+    args:
+      query: '{query}'
+  components_for_route:
+    tool: route_components
+    args:
+      route: '{route}'
+  permissions_for_route:
+    tool: route_permissions
+    args:
+      route: '{route}'
+  # api_calls_for_component and selectors_for_component are answered by the built-in map
+  # unless you add them here.
+
+# How Tessa learns which commit the graph was built from, to warn when it lags HEAD.
+freshness:
+  tool: index_status
+  commit_field: indexed_commit

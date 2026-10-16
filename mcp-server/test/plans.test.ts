@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
 import { planHash } from '../src/plans/plans.js';
 import { SCHEMAS_DIR } from '../src/schemas/index.js';
-import { call, connect, tempWorkspace } from './helpers.js';
+import { call, connect, initialisedSample, tempWorkspace } from './helpers.js';
 
 const PLAN = JSON.parse(readFileSync(new URL('examples/tests.example.json', SCHEMAS_DIR), 'utf8'));
 
@@ -177,5 +177,41 @@ describe('plan approval gate', () => {
     await call(client, 'save_plan', { plan: PLAN });
     writeFileSync(planFile(workspace), '{"version": 1}');
     expect((await call(client, 'approve_plan', { story: 'create-ticket' })).isError).toBe(true);
+  });
+});
+
+describe('save_plan checks against the frontend map', () => {
+  it('flags guessed routes and selectors, and passes real ones', async () => {
+    const workspace = initialisedSample();
+    const client = await connect(workspace);
+    await call(client, 'build_static_map');
+
+    // Written the way a planner guesses without context.
+    const guessed = structuredClone(PLAN);
+    guessed.tests[0].preconditions.start_path = '/ticket-list';
+    guessed.tests[0].steps[0].target = { strategy: 'testid', value: 'new-ticket-button' };
+    guessed.tests[0].steps[1].target = { strategy: 'label', value: 'Ticket subject' };
+    guessed.tests[0].steps[3].target = { strategy: 'role', role: 'button', name: 'Submit ticket' };
+    guessed.tests[1].steps[0].value = '/ticket/new';
+    const { data } = await call(client, 'save_plan', { plan: guessed });
+    expect(data.checked_against_map).toBe(true);
+    expect(data.warnings.map((w: any) => w.message)).toEqual(
+      expect.arrayContaining([
+        'test "editor-creates-ticket": start path /ticket-list matches no route',
+        'test "editor-creates-ticket" step 1: testid "new-ticket-button" is not in the frontend map',
+        'test "editor-creates-ticket" step 2: no label "Ticket subject" in the frontend map',
+        'test "editor-creates-ticket" step 4: no element named "Submit ticket" in the frontend map',
+        'test "short-title-rejected" step 1: path /ticket/new matches no route',
+      ]),
+    );
+
+    // The real plan resolves completely, including the patterned row test id.
+    const real = await call(client, 'save_plan', { plan: PLAN });
+    expect(real.data.warnings).toEqual([]);
+  });
+
+  it('skips the check when there is no map', async () => {
+    const client = await connect(fixture());
+    expect((await call(client, 'save_plan', { plan: PLAN })).data.checked_against_map).toBe(false);
   });
 });
