@@ -27,6 +27,7 @@ describe('tessa-mcp server', () => {
       'components_for_route',
       'context_freshness',
       'detect_stack',
+      'diff_runs',
       'emit_tests',
       'failed_test_ids',
       'get_selection',

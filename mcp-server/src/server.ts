@@ -1,3 +1,4 @@
+import { mkdirSync } from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import * as z from 'zod';
@@ -32,7 +33,15 @@ import {
 } from './plans/plans.js';
 import { loadResults, renderReport } from './report/render.js';
 import { buildSelection, readSelection, ReviewServer, writeSelection } from './report/server.js';
-import { failedTests, listRuns, resolveCompleteRun } from './runs/history.js';
+import { renderDiffHtml } from './report/diff.js';
+import { changedFiles, diffRuns, diffStem } from './runs/diff.js';
+import {
+  compareRunIds,
+  failedTests,
+  listRuns,
+  readResults,
+  resolveCompleteRun,
+} from './runs/history.js';
 import { buildResults } from './runs/results.js';
 import { importScreenshot } from './runs/screenshots.js';
 import {
@@ -45,6 +54,7 @@ import {
   writeAtomic,
   type StepRecord,
 } from './runs/store.js';
+import type { Plan, Results } from './schemas/generated/index.js';
 import { SERVER_NAME, SERVER_VERSION } from './version.js';
 
 const EXPORT_TARGETS = [
@@ -655,6 +665,83 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           ...(results.rerun_of === undefined ? {} : { rerun_of: results.rerun_of }),
           test_ids: failed.map((t) => t.test_id),
           failed,
+        });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'diff_runs',
+    {
+      title: 'Compare two runs',
+      description:
+        'Compare a run (run_b) against a baseline (run_a) of the same story and write diffs/<run_a>__<run_b>.json and .html under the artifacts root. Each test is fixed, regressed, still-failing, still-passing, added, removed or changed-other (a skipped test on either side). Defaults: run_b is the newest complete run (of the story, when given); run_a is the run run_b reran, else the complete run of the same story before it. Lists files changed between the two commits.',
+      inputSchema: {
+        run_a: z.string().optional().describe('Baseline run.'),
+        run_b: z.string().optional().describe('Run to compare against the baseline.'),
+        story: z.string().min(1).optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ run_a, run_b, story }) => {
+      try {
+        const config = requireConfig();
+        const ctx = { config, workspace };
+        const b = resolveCompleteRun(ctx, run_b, story);
+        let a: Results.RunResults;
+        if (run_a !== undefined) {
+          a = resolveCompleteRun(ctx, run_a);
+        } else if (b.rerun_of !== undefined && readResults(ctx, b.rerun_of) !== null) {
+          a = resolveCompleteRun(ctx, b.rerun_of);
+        } else {
+          const earlier = listRuns(ctx, { story: b.story_id, completeOnly: true }).find(
+            (r) => compareRunIds(r.run_id, b.run_id) < 0,
+          );
+          if (earlier === undefined) {
+            throw new RunError(
+              `no complete run of "${b.story_id}" before ${b.run_id} to compare with`,
+            );
+          }
+          a = resolveCompleteRun(ctx, earlier.run_id);
+        }
+        const commitA = a.environment.commit;
+        const commitB = b.environment.commit;
+        const files =
+          commitA === undefined || commitB === undefined
+            ? undefined
+            : await changedFiles(workspace, commitA, commitB);
+        const diff = diffRuns({ a, b, ...(files === undefined ? {} : { changedFiles: files }) });
+        let plan: Plan.TestPlan | null = null;
+        try {
+          plan = loadPlan(ctx, a.story_id);
+        } catch {
+          // The diff still renders, by test id.
+        }
+        const stem = diffStem(a.run_id, b.run_id);
+        mkdirSync(artifactsDir(ctx, 'diffs'), { recursive: true });
+        writeAtomic(
+          artifactsDir(ctx, 'diffs', `${stem}.json`),
+          `${JSON.stringify(diff, null, 2)}
+`,
+        );
+        writeAtomic(
+          artifactsDir(ctx, 'diffs', `${stem}.html`),
+          renderDiffHtml({ diff, a, b, plan }),
+        );
+        const root = config.artifacts.root;
+        return result({
+          ok: true,
+          run_a: a.run_id,
+          run_b: b.run_id,
+          story_id: a.story_id,
+          json_path: `${root}/diffs/${stem}.json`,
+          html_path: `${root}/diffs/${stem}.html`,
+          summary: diff.summary,
+          ...(diff.rerun_only === true ? { rerun_only: true } : {}),
+          ...(diff.changed_files === undefined ? {} : { changed_files: diff.changed_files }),
+          changed: diff.tests.filter((t) => t.change !== 'still-passing'),
         });
       } catch (error) {
         return failure(error);

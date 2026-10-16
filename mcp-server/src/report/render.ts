@@ -33,7 +33,7 @@ export function embedJson(value: unknown): string {
 }
 
 /** Replaces {{NAME}} placeholders without interpreting "$" in the values. */
-function fill(text: string, values: Record<string, string>): string {
+export function fill(text: string, values: Record<string, string>): string {
   return text.replace(/\{\{([A-Z]+)\}\}/g, (match, name: string) => values[name] ?? match);
 }
 
