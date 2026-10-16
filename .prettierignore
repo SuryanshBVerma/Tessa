@@ -1,0 +1,7 @@
+Context/
+CLAUDE.md
+docs/PLAN.md
+docs/DECISIONS.md
+**/dist/
+**/coverage/
+package-lock.json
