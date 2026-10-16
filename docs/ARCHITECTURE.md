@@ -58,7 +58,7 @@ Stack adapters are the main extension point: an adapter skill plus an extractor 
 | Evidence & results | `begin_run`, `capture_env_state`, `record_step`, `write_results`                                                                                                                                      |
 | Review             | `render_report`, `serve_review`, `get_selection`, `record_selection`, `stop_review`                                                                                                                   |
 | Runs               | `list_runs`, `diff_runs`, `failed_test_ids`                                                                                                                                                           |
-| Export             | `emit_tests(selection, target)`, `validate_export`                                                                                                                                                    |
+| Export             | `emit_tests(selection, target)`, `update_export_file`, `validate_export`, `capture_session`, `propose_handoff`, `apply_handoff`                                                                       |
 
 Internal modules: static extractor + framework adapters (ts-morph / tree-sitter), context query
 router, report renderer (fixed HTML/CSS/JS template), review server, emitters per target, run diff

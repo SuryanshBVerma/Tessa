@@ -16,6 +16,9 @@ import {
 import { storyContext } from './context/story.js';
 import type { FrontendMap } from './context/types.js';
 import { UnsafeDatabaseError } from './db/guard.js';
+import { emitTests, ExportError, updateExportFile } from './export/export.js';
+import { applyHandoff, proposeHandoff } from './export/handoff.js';
+import { captureSession, validateExport } from './export/validate.js';
 import { SeedError, seedProfile, type SeedResult } from './db/seed.js';
 import { detectStack, loadConfig, type ConfigIssue, type ResolvedConfig } from './config/index.js';
 import { initWorkspace } from './init/index.js';
@@ -73,6 +76,9 @@ function failure(error: unknown): CallToolResult {
   }
   if (error instanceof UnsafeDatabaseError) {
     return result({ ok: false, refused: true, error: error.message }, true);
+  }
+  if (error instanceof ExportError) {
+    return result({ ok: false, error: error.message }, true);
   }
   if (error instanceof ContextError) {
     return result({ ok: false, error: error.message }, true);
@@ -1077,6 +1083,144 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           })),
         );
         return result({ ok: true, ...crawl });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  const exportCtx = () => ({ config: requireConfig(), workspace });
+  const targetArg = z
+    .enum(['playwright-ts', 'playwright-dotnet', 'cypress-ts', 'selenium-csharp', 'selenium-java'])
+    .optional()
+    .describe("Defaults to the reviewer's choice, then export.target from config.");
+
+  server.registerTool(
+    'emit_tests',
+    {
+      title: 'Emit exported tests',
+      description:
+        "Generate test code for the reviewer's selection (selection.json) in the target framework, with a deterministic emitter, into export/<target>/<story>/. Re-emitting replaces that folder's files. Warns about selected tests that did not pass.",
+      inputSchema: { run_id: z.string(), target: targetArg },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ run_id, target }) => {
+      try {
+        return result({ ok: true, ...emitTests(exportCtx(), run_id, target) });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'update_export_file',
+    {
+      title: 'Update an exported file',
+      description:
+        'Replace one file in export/<target>/<story>/ with adapted content, for the convention pass (page objects, fixtures, naming). Only .ts, .js, .cs, .md, .json and .csproj files inside that folder; call validate_export afterwards.',
+      inputSchema: {
+        story: z.string().min(1),
+        target: z.enum(['playwright-ts', 'playwright-dotnet']),
+        path: z
+          .string()
+          .min(1)
+          .max(300)
+          .describe('Path inside the export folder, e.g. pages/TicketPage.ts.'),
+        content: z.string().max(512 * 1024),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ story, target, path, content }) => {
+      try {
+        return result({ ok: true, ...updateExportFile(exportCtx(), target, story, path, content) });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'validate_export',
+    {
+      title: 'Validate exported tests',
+      description:
+        'Compile the exported tests (TypeScript type check, or dotnet build) and, with run_once, run them once against the app using the stored sessions from capture_session. Writes export-summary.md. The app must be running for run_once.',
+      inputSchema: {
+        story: z.string().min(1),
+        target: z.enum(['playwright-ts', 'playwright-dotnet']),
+        run_once: z.boolean().optional().describe('Defaults to export.validate.run_once.'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ story, target, run_once }) => {
+      try {
+        const report = await validateExport(exportCtx(), target, story, {
+          ...(run_once === undefined ? {} : { runOnce: run_once }),
+        });
+        const failed = report.outcomes.filter((o) => o.status === 'failed').length;
+        return result({ ok: report.compiled && failed === 0, ...report }, !report.compiled);
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'capture_session',
+    {
+      title: 'Capture a signed-in session',
+      description:
+        "For running exported tests: open Playwright's own browser at the login page so the USER signs in as the persona, then closes the window. Playwright saves the session to the gitignored .session/ folder. Tessa never sees or types the credentials. Waits up to 10 minutes.",
+      inputSchema: { persona: z.string().min(1) },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ persona }) => {
+      try {
+        return result({ ok: true, ...(await captureSession(exportCtx(), persona)) });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'propose_handoff',
+    {
+      title: 'Propose moving tests into the repo',
+      description:
+        'Show the diff for copying the exported test files into export.conventions.test_dir. Writes nothing. Returns a proposal_id for apply_handoff.',
+      inputSchema: {
+        story: z.string().min(1),
+        target: z.enum(['playwright-ts', 'playwright-dotnet']),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    ({ story, target }) => {
+      try {
+        return result({ ok: true, ...proposeHandoff(exportCtx(), target, story) });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'apply_handoff',
+    {
+      title: 'Move tests into the repo',
+      description:
+        'Write the proposed files into the repository. Call only after the USER has seen the diff from propose_handoff and confirmed it in chat. Refuses if anything changed since that proposal.',
+      inputSchema: {
+        story: z.string().min(1),
+        target: z.enum(['playwright-ts', 'playwright-dotnet']),
+        proposal_id: z.string().regex(/^[0-9a-f]{16}$/),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ story, target, proposal_id }) => {
+      try {
+        return result({ ok: true, ...applyHandoff(exportCtx(), target, story, proposal_id) });
       } catch (error) {
         return failure(error);
       }
