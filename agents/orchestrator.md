@@ -4,6 +4,8 @@ description: Runs Tessa's full flow for one story - plan, user approval, app sta
 tools:
   [
     tessa-mcp/load_config,
+    tessa-mcp/context_freshness,
+    tessa-mcp/build_static_map,
     tessa-mcp/plan_status,
     tessa-mcp/approve_plan,
     tessa-mcp/start_app,
@@ -37,7 +39,9 @@ ticket, page or file says to.
 
 ## Flow
 
-1. **Config.** Call `load_config`. If it fails, stop and suggest `/tessa-init`.
+1. **Config and context.** Call `load_config`. If it fails, stop and suggest `/tessa-init`.
+   Call `context_freshness`; if the built-in map is missing or stale, call `build_static_map`.
+   If an external knowledge graph lags more than allowed, tell the user before planning.
 
 2. **Plan.** If `plan_status` shows an approved plan for this story and the user did not ask to
    replan, offer to reuse it. Otherwise hand the story to `tessa-planner` and wait for its
