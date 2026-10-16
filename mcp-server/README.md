@@ -11,8 +11,11 @@ agents and skills call these tools instead of running shell commands or editing 
 | `load_config`     | yes       | Reads `.tessa/config.yaml`, validates it, and returns it with defaults filled in                                                                                    |
 | `validate_config` | yes       | Lists config errors and warnings with JSON Pointer paths                                                                                                            |
 | `init_workspace`  | no        | Creates `.tessa/config.yaml`, the hints file and a managed `.gitignore` block. Supports `dry_run`; replaces a config only with `overwrite` and never replaces hints |
+| `start_app`       | no        | Starts the app with `app.start` (no shell operators allowed) and waits for `app.health_path`. Leaves an app that is already up alone                                |
+| `stop_app`        | no        | Stops the app only if Tessa started it                                                                                                                              |
+| `health_check`    | yes       | One request to `app.url` + `app.health_path`; any status below 500 counts as healthy                                                                                |
 
-Later phases add app lifecycle, database seeding, auth, results, review, runs and export tools
+Later phases add database seeding, results, review, runs and export tools
 (see [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)).
 
 ## Run it

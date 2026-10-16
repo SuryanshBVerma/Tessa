@@ -1,75 +1,10 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { afterEach, describe, expect, it } from 'vitest';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { createServer, SERVER_VERSION } from '../src/index.js';
+import { SERVER_VERSION } from '../src/index.js';
 import { mergeGitignore } from '../src/init/index.js';
-
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const SAMPLE_APP = join(REPO_ROOT, 'testing', 'sample-app');
-
-const cleanups: (() => Promise<void> | void)[] = [];
-
-afterEach(async () => {
-  for (const cleanup of cleanups.splice(0).reverse()) {
-    await cleanup();
-  }
-});
-
-// Skipped when copying the sample app, so each test starts from an uninitialised workspace.
-const SKIP_DIRS = /[\\/](node_modules|build|\.react-router|\.tessa|ai-test-artifacts)([\\/]|$)/;
-const SKIP_FILES = /[\\/]\.(env|gitignore)$/;
-
-/** Copies the sample app, without Tessa files, build output or .env, into a temp workspace. */
-function sampleWorkspace(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'tessa-server-'));
-  cpSync(SAMPLE_APP, dir, {
-    recursive: true,
-    filter: (src) => !SKIP_DIRS.test(src) && !SKIP_FILES.test(src),
-  });
-  cleanups.push(() => {
-    rmSync(dir, { recursive: true, force: true });
-  });
-  return dir;
-}
-
-async function connect(workspace: string): Promise<Client> {
-  const server = createServer({ workspace });
-  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-  const client = new Client({ name: 'test', version: '0.0.0' });
-  await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
-  cleanups.push(async () => {
-    await client.close();
-    await server.close();
-  });
-  return client;
-}
-
-async function call(client: Client, name: string, args: Record<string, unknown> = {}) {
-  const response = await client.callTool({ name, arguments: args });
-  return {
-    isError: response.isError === true,
-    data: response.structuredContent as Record<string, any>,
-  };
-}
-
-const SAMPLE_INIT = {
-  app: { url: 'http://127.0.0.1:5173' },
-  seed_profiles: {
-    default: ['scripts/seed/base.sql', 'scripts/seed/users.sql', 'scripts/seed/tickets.sql'],
-    'admin-heavy': ['scripts/seed/base.sql', 'scripts/seed/admins.sql', 'scripts/seed/tickets.sql'],
-  },
-  personas: [
-    { name: 'viewer', seed_profile: 'default' },
-    { name: 'editor', seed_profile: 'default' },
-    { name: 'admin', seed_profile: 'admin-heavy' },
-  ],
-  export_target: 'playwright-ts',
-};
+import { call, connect, REPO_ROOT, SAMPLE_INIT, sampleWorkspace } from './helpers.js';
 
 describe('tessa-mcp server', () => {
   it('reports a version matching package.json', () => {
@@ -77,14 +12,17 @@ describe('tessa-mcp server', () => {
     expect(SERVER_VERSION).toBe(pkg.version);
   });
 
-  it('lists the Phase 1 tools with read-only hints where they apply', async () => {
+  it('lists its tools with read-only hints where they apply', async () => {
     const client = await connect(sampleWorkspace());
     const { tools } = await client.listTools();
     const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
     expect(Object.keys(byName).sort()).toEqual([
       'detect_stack',
+      'health_check',
       'init_workspace',
       'load_config',
+      'start_app',
+      'stop_app',
       'validate_config',
     ]);
     expect(byName.load_config?.annotations?.readOnlyHint).toBe(true);
