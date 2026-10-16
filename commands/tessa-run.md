@@ -15,6 +15,9 @@ tools:
     tessa-mcp/record_step,
     tessa-mcp/write_results,
     tessa-mcp/render_report,
+    tessa-mcp/failed_test_ids,
+    tessa-mcp/record_triage,
+    tessa-triage,
     browser,
   ]
 ---
@@ -49,11 +52,17 @@ Hand the run to the `tessa-executor` agent with the story and any test ids. If y
 cannot run subagents, do the executor's work yourself by following the `browser-execution`
 skill. The user will be asked to sign in for each persona; that pause is expected.
 
-## 4. Finish
+## 4. Triage
+
+If any test failed or errored, hand the run id to the `tessa-triage` agent. If your host cannot
+run subagents, follow `agents/triage.md` yourself with the `failure-triage` skill. Triage only
+reads and records; it never changes the app, the plan or the tests.
+
+## 5. Finish
 
 - If Tessa started the app in step 2, call `stop_app`.
 - Call `render_report` and give the user the report path. It opens from disk; for selecting
   tests to export, `serve_review` serves it with an Export button.
-- Report the summary counts, then each failed or errored test with its failing step and one
-  line on what happened, and the path to `results.json`.
+- Report the summary counts, then each failed or errored test with its failing step, its triage
+  class and one-line rationale, and the path to `results.json`.
 - Mention that run output (screenshots included) is gitignored and stays on this machine.

@@ -10,9 +10,29 @@
     "version": { "const": 1 },
     "run_a": { "$ref": "#/$defs/runId" },
     "run_b": { "$ref": "#/$defs/runId" },
+    "story_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "maxLength": 80
+    },
     "created_at": { "type": "string", "format": "date-time" },
     "commit_a": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
     "commit_b": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+    "dirty_a": {
+      "description": "run_a ran with uncommitted changes, so commit_a does not fully describe the code.",
+      "type": "boolean"
+    },
+    "dirty_b": { "type": "boolean" },
+    "rerun_only": {
+      "description": "run_b reran some of run_a's tests; tests it did not rerun are left out rather than counted as removed.",
+      "type": "boolean"
+    },
+    "changed_files": {
+      "description": "Files changed between commit_a and commit_b (git diff --name-only), relative to the workspace, leaving out the artifacts root. Uncommitted changes are not included.",
+      "type": "array",
+      "maxItems": 500,
+      "items": { "type": "string", "minLength": 1 }
+    },
     "summary": {
       "type": "object",
       "additionalProperties": false,

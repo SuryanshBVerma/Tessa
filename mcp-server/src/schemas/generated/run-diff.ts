@@ -25,9 +25,25 @@ export interface RunDiff {
 version: 1
 run_a: RunId
 run_b: RunId
+story_id?: string
 created_at: string
 commit_a?: string
 commit_b?: string
+/**
+ * run_a ran with uncommitted changes, so commit_a does not fully describe the code.
+ */
+dirty_a?: boolean
+dirty_b?: boolean
+/**
+ * run_b reran some of run_a's tests; tests it did not rerun are left out rather than counted as removed.
+ */
+rerun_only?: boolean
+/**
+ * Files changed between commit_a and commit_b (git diff --name-only), relative to the workspace, leaving out the artifacts root. Uncommitted changes are not included.
+ * 
+ * @maxItems 500
+ */
+changed_files?: string[]
 summary: {
 fixed: number
 regressed: number

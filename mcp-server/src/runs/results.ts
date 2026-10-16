@@ -32,7 +32,6 @@ function statusOf(steps: readonly StepRecord[], planSteps: number): TestStatus {
   return 'error';
 }
 
-/** high: test IDs and roles only; medium: labels or placeholders; low: CSS or visible text. */
 /** One string per step that identifies what it does, for comparing tests. */
 function stepSignature(step: Plan.Step): string {
   const target =
@@ -73,6 +72,7 @@ export function overlaps(tests: readonly Plan.Test[]): Map<string, string[]> {
   return result;
 }
 
+/** high: test IDs and roles only; medium: labels or placeholders; low: CSS or visible text. */
 export function selectorStability(test: Plan.Test): 'high' | 'medium' | 'low' {
   const strategies = test.steps.flatMap((step) =>
     step.target === undefined ? [] : [step.target.strategy],
@@ -145,6 +145,9 @@ export function buildResults(
     const consistent = attemptStatuses.filter((s) => s === status).length;
     const duration = finalSteps.reduce((sum, s) => sum + (s.duration_ms ?? 0), 0);
     const failure = failureFor(status, finalSteps, test.steps.length);
+    // Triage explains a failure or a flaky pass; a later clean pass makes it moot.
+    const triage =
+      status === 'passed' && consistent === attempts ? undefined : state.triage?.[testId];
 
     tests.push({
       test_id: testId,
@@ -157,6 +160,7 @@ export function buildResults(
       },
       steps: finalSteps.map(toStepResult),
       ...(failure === undefined ? {} : { failure }),
+      ...(triage === undefined ? {} : { triage }),
       quality: {
         selector_stability: selectorStability(test),
         rerun_consistency: Math.round((consistent / attempts) * 100) / 100,
@@ -172,6 +176,7 @@ export function buildResults(
     run_id: state.run_id,
     story_id: state.story_id,
     plan: state.plan,
+    ...(state.rerun_of === undefined ? {} : { rerun_of: state.rerun_of }),
     started_at: state.started_at,
     finished_at: finishedAt.toISOString(),
     environment: { ...state.environment, host: state.host },

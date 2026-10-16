@@ -23,12 +23,14 @@ browser, exactly as a careful manual tester would, and record what happened. Fol
 
 - `story`: the plan to run (`plans/<story>/tests.json` under the artifacts root).
 - Optionally `test_ids`, to run only some tests.
+- Optionally `rerun_of`, a run id: rerun that run's failed and errored tests (or the given
+  `test_ids` from it).
 - The app is already running; the caller started it with `start_app`.
 
 ## What you do
 
-1. Call `begin_run` with the story, the test ids if given, and the host you are running in
-   (`vscode-agent` or `claude-code`).
+1. Call `begin_run` with the story, the test ids and `rerun_of` if given, and the host you are
+   running in (`vscode-agent` or `claude-code`).
 2. Run the tests as the `browser-execution` skill describes: group by persona, pause for the
    user to sign in, capture environment state, seed before each test, run and record each step
    with a screenshot.

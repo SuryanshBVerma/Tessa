@@ -17,6 +17,7 @@ describe('tessa-mcp server', () => {
     const { tools } = await client.listTools();
     const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
     expect(Object.keys(byName).sort()).toEqual([
+      'annotate_diff',
       'api_calls_for_component',
       'apply_handoff',
       'approve_plan',
@@ -27,10 +28,13 @@ describe('tessa-mcp server', () => {
       'components_for_route',
       'context_freshness',
       'detect_stack',
+      'diff_runs',
       'emit_tests',
+      'failed_test_ids',
       'get_selection',
       'health_check',
       'init_workspace',
+      'list_runs',
       'load_config',
       'permissions_for_route',
       'plan_status',
@@ -38,6 +42,7 @@ describe('tessa-mcp server', () => {
       'record_crawl',
       'record_selection',
       'record_step',
+      'record_triage',
       'render_report',
       'reset_db',
       'routes_for_feature',

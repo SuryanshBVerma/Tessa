@@ -274,6 +274,142 @@ describe('write_results', () => {
   });
 });
 
+/** A complete run where short-title-rejected fails, viewer-cannot-create errors, the editor test passes. */
+async function failingRun(workspace: string) {
+  const { client, runId } = await begin(workspace);
+  for (let i = 0; i < 6; i++) {
+    await call(client, 'record_step', {
+      run_id: runId,
+      test_id: 'editor-creates-ticket',
+      index: i,
+      status: 'passed',
+    });
+  }
+  await call(client, 'record_step', {
+    run_id: runId,
+    test_id: 'short-title-rejected',
+    index: 0,
+    status: 'failed',
+    actual: '404 page',
+  });
+  await call(client, 'record_step', {
+    run_id: runId,
+    test_id: 'viewer-cannot-create',
+    index: 0,
+    status: 'passed',
+  });
+  await call(client, 'write_results', { run_id: runId });
+  return { client, runId };
+}
+
+describe('reruns', () => {
+  it('lists the failed and errored tests of the newest complete run', async () => {
+    const workspace = fixture();
+    const { client, runId } = await failingRun(workspace);
+    const { isError, data } = await call(client, 'failed_test_ids', {});
+    expect(isError, JSON.stringify(data)).toBe(false);
+    expect(data).toMatchObject({
+      run_id: runId,
+      story_id: 'create-ticket',
+      test_ids: ['short-title-rejected', 'viewer-cannot-create'],
+    });
+    expect(data.failed[0]).toEqual({
+      test_id: 'short-title-rejected',
+      status: 'failed',
+      step_index: 0,
+      message: '404 page',
+    });
+  });
+
+  it('reruns only the failed tests and links the new run to the old one', async () => {
+    const workspace = fixture();
+    const { client, runId } = await failingRun(workspace);
+    const rerun = await call(client, 'begin_run', { story: 'create-ticket', rerun_of: runId });
+    expect(rerun.isError, JSON.stringify(rerun.data)).toBe(false);
+    expect(rerun.data.rerun_of).toBe(runId);
+    expect(rerun.data.tests.map((t: any) => t.id)).toEqual([
+      'short-title-rejected',
+      'viewer-cannot-create',
+    ]);
+    const newId = rerun.data.run_id as string;
+    await call(client, 'write_results', { run_id: newId });
+    const results = JSON.parse(
+      readFileSync(join(workspace, 'ai-test-artifacts', 'runs', newId, 'results.json'), 'utf8'),
+    );
+    expect(results.rerun_of).toBe(runId);
+
+    const listed = await call(client, 'list_runs', {});
+    expect(listed.data.runs.map((r: any) => [r.run_id, r.state, r.rerun_of])).toEqual([
+      [newId, 'complete', runId],
+      [runId, 'complete', undefined],
+    ]);
+    expect(listed.data.runs[1].summary).toMatchObject({ passed: 1, failed: 1, error: 1 });
+  });
+
+  it('reruns chosen tests of the old run, and refuses tests it did not run', async () => {
+    const workspace = fixture();
+    const { client, runId } = await failingRun(workspace);
+    const chosen = await call(client, 'begin_run', {
+      story: 'create-ticket',
+      rerun_of: runId,
+      test_ids: ['viewer-cannot-create'],
+    });
+    expect(chosen.data.tests.map((t: any) => t.id)).toEqual(['viewer-cannot-create']);
+
+    const subset = await call(client, 'begin_run', {
+      story: 'create-ticket',
+      test_ids: ['editor-creates-ticket'],
+    });
+    await call(client, 'write_results', { run_id: subset.data.run_id });
+    const outside = await call(client, 'begin_run', {
+      story: 'create-ticket',
+      rerun_of: subset.data.run_id,
+      test_ids: ['short-title-rejected'],
+    });
+    expect(outside.isError).toBe(true);
+    expect(outside.data.error).toMatch(/did not run: short-title-rejected/);
+  });
+
+  it('refuses a rerun with nothing to rerun, an unfinished run, or another story', async () => {
+    const workspace = fixture();
+    const { client, runId } = await begin(workspace, { test_ids: ['viewer-cannot-create'] });
+    await call(client, 'record_step', {
+      run_id: runId,
+      test_id: 'viewer-cannot-create',
+      index: 0,
+      status: 'passed',
+    });
+    const unfinished = await call(client, 'begin_run', { story: 'create-ticket', rerun_of: runId });
+    expect(unfinished.data.error).toMatch(/has no results\.json yet/);
+    const listed = await call(client, 'list_runs', {});
+    expect(listed.data.runs[0]).toMatchObject({ run_id: runId, state: 'in-progress' });
+
+    const plan = JSON.parse(PLAN);
+    const passing = await begin(workspace, { test_ids: ['editor-creates-ticket'] });
+    for (let i = 0; i < plan.tests[0].steps.length; i++) {
+      await call(client, 'record_step', {
+        run_id: passing.runId,
+        test_id: 'editor-creates-ticket',
+        index: i,
+        status: 'passed',
+      });
+    }
+    await call(client, 'write_results', { run_id: passing.runId });
+    const nothing = await call(client, 'begin_run', {
+      story: 'create-ticket',
+      rerun_of: passing.runId,
+    });
+    expect(nothing.data.error).toMatch(/no failed or errored tests/);
+    const other = await call(client, 'failed_test_ids', {
+      run_id: passing.runId,
+      story: 'close-ticket',
+    });
+    expect(other.data.error).toMatch(/is for story "create-ticket"/);
+    const none = await call(client, 'failed_test_ids', { story: 'close-ticket' });
+    expect(none.data.error).toMatch(/no completed runs for story "close-ticket"/);
+  });
+});
+
 describe('selectorStability', () => {
   const step = (target: object) => ({ action: 'click' as const, description: 'x', target });
   it.each([

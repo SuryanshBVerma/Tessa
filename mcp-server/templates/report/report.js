@@ -139,6 +139,7 @@
     const meta = document.getElementById('run-meta');
     for (const bit of [
       `Run ${results.run_id}`,
+      results.rerun_of ? `Rerun of ${results.rerun_of}` : null,
       env.branch,
       env.commit ? `${env.commit.slice(0, 7)}${env.dirty ? ' (modified)' : ''}` : null,
       new Date(results.finished_at).toLocaleString(),

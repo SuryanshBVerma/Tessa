@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import * as z from 'zod';
@@ -32,6 +33,16 @@ import {
 } from './plans/plans.js';
 import { loadResults, renderReport } from './report/render.js';
 import { buildSelection, readSelection, ReviewServer, writeSelection } from './report/server.js';
+import { readDiff, writeDiff } from './report/diff.js';
+import { recordTriage } from './runs/triage.js';
+import { changedFiles, diffRuns } from './runs/diff.js';
+import {
+  compareRunIds,
+  failedTests,
+  listRuns,
+  readResults,
+  resolveCompleteRun,
+} from './runs/history.js';
 import { buildResults } from './runs/results.js';
 import { importScreenshot } from './runs/screenshots.js';
 import {
@@ -44,6 +55,7 @@ import {
   writeAtomic,
   type StepRecord,
 } from './runs/store.js';
+import type { Results } from './schemas/generated/index.js';
 import { SERVER_NAME, SERVER_VERSION } from './version.js';
 
 const EXPORT_TARGETS = [
@@ -430,33 +442,59 @@ export function createServer({ workspace }: ServerOptions): McpServer {
     {
       title: 'Begin a run',
       description:
-        'Start a run of an approved plan (plans/<story>/tests.json under the artifacts root). Refuses a plan that is not approved or changed since approval. Creates runs/<run_id>/ and returns the run id and the tests to execute, with their steps indexed from 0.',
+        'Start a run of an approved plan (plans/<story>/tests.json under the artifacts root). Refuses a plan that is not approved or changed since approval. Creates runs/<run_id>/ and returns the run id and the tests to execute, with their steps indexed from 0. With rerun_of, reruns the failed and errored tests of that run (or test_ids, which must belong to it) and links the new run to it.',
       inputSchema: {
         story: z.string().min(1).describe('Story id: the folder name under plans/.'),
         test_ids: z.array(z.string().min(1)).min(1).optional().describe('Run only these tests.'),
+        rerun_of: z
+          .string()
+          .optional()
+          .describe('A completed run of the same story whose failed tests to rerun.'),
         host: hostEnum.optional().describe('The agent host running this session.'),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
-    async ({ story, test_ids, host }) => {
+    async ({ story, test_ids, rerun_of, host }) => {
       try {
         const config = requireConfig();
         const ctx = { config, workspace };
         const plan = loadPlan(ctx, story);
         requireApproved(ctx, story);
+        let ids = test_ids;
+        if (rerun_of !== undefined) {
+          const original = resolveCompleteRun(ctx, rerun_of, story);
+          const inOriginal = new Set(original.tests.map((t) => t.test_id));
+          const outside = (ids ?? []).filter((id) => !inOriginal.has(id));
+          if (outside.length > 0) {
+            throw new RunError(`run ${rerun_of} did not run: ${outside.join(', ')}`);
+          }
+          ids ??= failedTests(original).map((t) => t.test_id);
+          if (ids.length === 0) {
+            throw new RunError(`run ${rerun_of} has no failed or errored tests to rerun`);
+          }
+          const inPlan = new Set(plan.tests.map((t) => t.id));
+          const dropped = ids.filter((id) => !inPlan.has(id));
+          if (dropped.length > 0) {
+            throw new RunError(
+              `the plan no longer has ${dropped.join(', ')}; pass test_ids to rerun the others`,
+            );
+          }
+        }
         const git = await readGitState(workspace);
         const { state, tests } = createRun(
           ctx,
           plan,
           { app_url: config.app.url, ...(git ?? {}) },
           {
-            ...(test_ids === undefined ? {} : { testIds: test_ids }),
+            ...(ids === undefined ? {} : { testIds: ids }),
             ...(host === undefined ? {} : { host }),
+            ...(rerun_of === undefined ? {} : { rerunOf: rerun_of }),
           },
         );
         return result({
           ok: true,
           run_id: state.run_id,
+          ...(rerun_of === undefined ? {} : { rerun_of }),
           run_dir: `${config.artifacts.root}/runs/${state.run_id}`,
           story: plan.story,
           app_url: config.app.url,
@@ -572,6 +610,226 @@ export function createServer({ workspace }: ServerOptions): McpServer {
             ...(t.failure === undefined ? {} : { failure: t.failure }),
           })),
         });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'list_runs',
+    {
+      title: 'List runs',
+      description:
+        'List runs under the artifacts root, newest first, with their story, state (complete or in-progress), commit, summary and the run they reran, if any.',
+      inputSchema: {
+        story: z.string().min(1).optional().describe('Only runs of this story.'),
+        limit: z.number().int().min(1).max(200).optional().describe('Defaults to 20.'),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    ({ story, limit }) => {
+      try {
+        const ctx = { config: requireConfig(), workspace };
+        const runs = listRuns(ctx, {
+          limit: limit ?? 20,
+          ...(story === undefined ? {} : { story }),
+        });
+        return result({ ok: true, runs });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'failed_test_ids',
+    {
+      title: 'Failed tests of a run',
+      description:
+        'The failed and errored tests of a completed run (default: the newest complete run, of the story when given), with the failing step, message and any triage. Pass the run id to begin_run as rerun_of to rerun them.',
+      inputSchema: {
+        run_id: z.string().optional(),
+        story: z.string().min(1).optional(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    ({ run_id, story }) => {
+      try {
+        const ctx = { config: requireConfig(), workspace };
+        const results = resolveCompleteRun(ctx, run_id, story);
+        const failed = failedTests(results);
+        return result({
+          ok: true,
+          run_id: results.run_id,
+          story_id: results.story_id,
+          ...(results.rerun_of === undefined ? {} : { rerun_of: results.rerun_of }),
+          test_ids: failed.map((t) => t.test_id),
+          failed,
+        });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'diff_runs',
+    {
+      title: 'Compare two runs',
+      description:
+        'Compare a run (run_b) against a baseline (run_a) of the same story and write diffs/<run_a>__<run_b>.json and .html under the artifacts root. Each test is fixed, regressed, still-failing, still-passing, added, removed or changed-other (a skipped test on either side). Defaults: run_b is the newest complete run (of the story, when given); run_a is the run run_b reran, else the complete run of the same story before it. Lists files changed between the two commits.',
+      inputSchema: {
+        run_a: z.string().optional().describe('Baseline run.'),
+        run_b: z.string().optional().describe('Run to compare against the baseline.'),
+        story: z.string().min(1).optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ run_a, run_b, story }) => {
+      try {
+        const config = requireConfig();
+        const ctx = { config, workspace };
+        const b = resolveCompleteRun(ctx, run_b, story);
+        let a: Results.RunResults;
+        if (run_a !== undefined) {
+          a = resolveCompleteRun(ctx, run_a);
+        } else if (b.rerun_of !== undefined && readResults(ctx, b.rerun_of) !== null) {
+          a = resolveCompleteRun(ctx, b.rerun_of);
+        } else {
+          const earlier = listRuns(ctx, { story: b.story_id, completeOnly: true }).find(
+            (r) => compareRunIds(r.run_id, b.run_id) < 0,
+          );
+          if (earlier === undefined) {
+            throw new RunError(
+              `no complete run of "${b.story_id}" before ${b.run_id} to compare with`,
+            );
+          }
+          a = resolveCompleteRun(ctx, earlier.run_id);
+        }
+        const commitA = a.environment.commit;
+        const commitB = b.environment.commit;
+        const files =
+          commitA === undefined || commitB === undefined
+            ? undefined
+            : await changedFiles(workspace, commitA, commitB, config.artifacts.root);
+        const diff = diffRuns({ a, b, ...(files === undefined ? {} : { changedFiles: files }) });
+        // Keep triage notes from an earlier diff of the same runs where the change is the same.
+        const previous = readDiff(ctx, a.run_id, b.run_id);
+        for (const test of diff.tests) {
+          const before = previous?.tests.find((t) => t.test_id === test.test_id);
+          if (before?.notes !== undefined && before.change === test.change) {
+            test.notes = before.notes;
+          }
+        }
+        const paths = writeDiff(ctx, diff, a, b);
+        return result({
+          ok: true,
+          run_a: a.run_id,
+          run_b: b.run_id,
+          story_id: a.story_id,
+          ...paths,
+          summary: diff.summary,
+          ...(diff.rerun_only === true ? { rerun_only: true } : {}),
+          ...(diff.changed_files === undefined ? {} : { changed_files: diff.changed_files }),
+          changed: diff.tests.filter((t) => t.change !== 'still-passing'),
+        });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'record_triage',
+    {
+      title: 'Record a triage finding',
+      description:
+        'Store your classification of one failed, errored or flaky test in the run: app-bug (the app breaks the story), test-selector (the test or its target is wrong), environment (app, browser, network or session trouble), data (seed or leftover data), or unknown. Written to results.json and kept by later write_results calls; the report is re-rendered if it exists. Cite the evidence you used.',
+      inputSchema: {
+        run_id: z.string(),
+        test_id: z.string(),
+        class: z.enum(['app-bug', 'test-selector', 'environment', 'data', 'unknown']),
+        rationale: z.string().min(1).max(1000).describe('One or two sentences.'),
+        confidence: z.enum(['low', 'medium', 'high']),
+        evidence: z
+          .array(z.string().min(1).max(500))
+          .max(20)
+          .optional()
+          .describe(
+            'What you relied on: step results, screenshots, files and lines, diff entries.',
+          ),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ run_id, test_id, class: triageClass, rationale, confidence, evidence }) => {
+      try {
+        const ctx = { config: requireConfig(), workspace };
+        const triage = {
+          class: triageClass,
+          rationale,
+          confidence,
+          ...(evidence === undefined ? {} : { evidence }),
+        };
+        recordTriage(ctx, run_id, test_id, triage);
+        const hasReport = existsSync(artifactsDir(ctx, 'runs', run_id, 'report.html'));
+        return result({
+          ok: true,
+          run_id,
+          test_id,
+          triage,
+          ...(hasReport ? { report: renderReport(ctx, run_id).path } : {}),
+        });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'annotate_diff',
+    {
+      title: 'Annotate a run diff',
+      description:
+        'Add your interpretation to tests in an existing diff (from diff_runs), e.g. why a test regressed and what changed. Rewrites diffs/<run_a>__<run_b>.json and .html. An empty note removes one.',
+      inputSchema: {
+        run_a: z.string(),
+        run_b: z.string(),
+        notes: z
+          .array(z.object({ test_id: z.string(), note: z.string().max(1000) }))
+          .min(1)
+          .max(200),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ run_a, run_b, notes }) => {
+      try {
+        const ctx = { config: requireConfig(), workspace };
+        const diff = readDiff(ctx, run_a, run_b);
+        if (diff === null) {
+          throw new RunError(`no diff of ${run_a} and ${run_b}; call diff_runs first`);
+        }
+        const unknown = notes.filter((n) => !diff.tests.some((t) => t.test_id === n.test_id));
+        if (unknown.length > 0) {
+          throw new RunError(`the diff has no tests: ${unknown.map((n) => n.test_id).join(', ')}`);
+        }
+        for (const { test_id, note } of notes) {
+          const test = diff.tests.find((t) => t.test_id === test_id);
+          if (test !== undefined) {
+            if (note.trim() === '') {
+              delete test.notes;
+            } else {
+              test.notes = note;
+            }
+          }
+        }
+        const paths = writeDiff(
+          ctx,
+          diff,
+          resolveCompleteRun(ctx, run_a),
+          resolveCompleteRun(ctx, run_b),
+        );
+        return result({ ok: true, ...paths, annotated: notes.length });
       } catch (error) {
         return failure(error);
       }

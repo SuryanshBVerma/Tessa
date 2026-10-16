@@ -57,7 +57,7 @@ Stack adapters are the main extension point: an adapter skill plus an extractor 
 | Plans              | `save_plan`, `approve_plan`, `plan_status` — approval is recorded with the plan's hash and `begin_run` refuses unapproved or changed plans                                                            |
 | Evidence & results | `begin_run`, `capture_env_state`, `record_step`, `write_results`                                                                                                                                      |
 | Review             | `render_report`, `serve_review`, `get_selection`, `record_selection`, `stop_review`                                                                                                                   |
-| Runs               | `list_runs`, `diff_runs`, `failed_test_ids`                                                                                                                                                           |
+| Runs               | `list_runs`, `failed_test_ids`, `diff_runs`, `annotate_diff`, `record_triage`                                                                                                                         |
 | Export             | `emit_tests(selection, target)`, `update_export_file`, `validate_export`, `capture_session`, `propose_handoff`, `apply_handoff`                                                                       |
 
 Internal modules: static extractor + framework adapters (ts-morph / tree-sitter), context query

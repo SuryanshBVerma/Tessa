@@ -34,12 +34,16 @@ export interface RunState {
   story_id: string;
   /** Plan path relative to the artifacts root. */
   plan: string;
+  /** Run whose failed tests this run reruns. */
+  rerun_of?: string;
   started_at: string;
   test_ids: string[];
   host: Results.RunEnvironment['host'];
   environment: Omit<Results.RunEnvironment, 'host'>;
   env_states: Record<string, Results.EnvState>;
   steps: Record<string, StepRecord[]>;
+  /** Triage findings by test id, kept here so write_results never drops them. */
+  triage?: Record<string, Results.Triage>;
 }
 
 export interface RunContext {
@@ -165,7 +169,7 @@ export function createRun(
   ctx: RunContext,
   plan: Plan.TestPlan,
   environment: Omit<Results.RunEnvironment, 'host'>,
-  options: { testIds?: string[]; host?: Results.RunEnvironment['host'] } = {},
+  options: { testIds?: string[]; host?: Results.RunEnvironment['host']; rerunOf?: string } = {},
 ): { state: RunState; tests: Plan.Test[] } {
   const wanted = options.testIds;
   if (wanted !== undefined) {
@@ -183,6 +187,7 @@ export function createRun(
     run_id: runId,
     story_id: plan.story.id,
     plan: planPath(plan.story.id),
+    ...(options.rerunOf === undefined ? {} : { rerun_of: options.rerunOf }),
     started_at: new Date().toISOString(),
     test_ids: tests.map((t) => t.id),
     host: options.host ?? 'other',
