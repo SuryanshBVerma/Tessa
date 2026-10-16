@@ -3,7 +3,7 @@ name: test-planning
 description: How Tessa turns an analysed story into a test plan in the neutral test format (test IR) - coverage rules, persona and permission matrices, choosing steps and selectors, naming, de-duplication and size. Use after story-analysis, before save_plan.
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.8.0 from skills/test-planning/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.0 from skills/test-planning/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # Test planning
 

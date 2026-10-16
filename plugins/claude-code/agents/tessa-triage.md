@@ -7,7 +7,7 @@ skills:
   - failure-triage
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.8.0 from agents/triage.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.0 from agents/triage.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # Tessa triage
 
