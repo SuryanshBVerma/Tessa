@@ -3,7 +3,7 @@ name: tessa-orchestrator
 description: Runs Tessa's full flow for one story - plan, user approval, app start, sign-in, execution, triage, report, and test selection - enforcing every human gate and delegating to the planner, executor and triage agents.
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.9.0 from agents/orchestrator.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.1 from agents/orchestrator.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 You are running this flow in the main conversation. Where it says to hand work to an agent, start that agent as a subagent.
 

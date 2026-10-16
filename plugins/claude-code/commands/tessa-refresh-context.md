@@ -4,7 +4,7 @@ argument-hint: "[crawl]"
 allowed-tools: mcp__plugin_tessa-qa_tessa-mcp__load_config, mcp__plugin_tessa-qa_tessa-mcp__build_static_map, mcp__plugin_tessa-qa_tessa-mcp__context_freshness, mcp__plugin_tessa-qa_tessa-mcp__start_app, mcp__plugin_tessa-qa_tessa-mcp__stop_app, mcp__plugin_tessa-qa_tessa-mcp__record_crawl, mcp__playwright__browser_navigate, mcp__playwright__browser_navigate_back, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_select_option, mcp__playwright__browser_hover, mcp__playwright__browser_press_key, mcp__playwright__browser_wait_for, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_handle_dialog, mcp__playwright__browser_tabs, mcp__playwright__browser_resize, mcp__playwright__browser_console_messages, mcp__playwright__browser_network_requests, mcp__playwright__browser_close, Agent
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.9.0 from commands/tessa-refresh-context.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.1 from commands/tessa-refresh-context.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # /tessa-refresh-context
 

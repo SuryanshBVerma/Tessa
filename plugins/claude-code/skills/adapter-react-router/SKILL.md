@@ -3,7 +3,7 @@ name: adapter-react-router
 description: Where React Router (framework mode) apps keep routes, guards, data loading and test hooks, and what Tessa's map does and does not capture for them. Use when planning or debugging tests for a react-router stack.
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.9.0 from skills/adapter-react-router/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.1 from skills/adapter-react-router/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # React Router adapter
 

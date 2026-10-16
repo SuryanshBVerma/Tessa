@@ -3,7 +3,7 @@ name: ui-flow-discovery
 description: How Tessa learns an app's screens, guards and navigation - the context query tools, story-scoped retrieval, keeping the map fresh, using a team knowledge graph, and crawling the app per persona in the host browser. Use before planning, and when refreshing context.
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.9.0 from skills/ui-flow-discovery/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.1 from skills/ui-flow-discovery/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # UI flow discovery
 

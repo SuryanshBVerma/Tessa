@@ -4,7 +4,7 @@ argument-hint: "[run-id] [target]"
 allowed-tools: mcp__plugin_tessa-qa_tessa-mcp__load_config, mcp__plugin_tessa-qa_tessa-mcp__render_report, mcp__plugin_tessa-qa_tessa-mcp__serve_review, mcp__plugin_tessa-qa_tessa-mcp__get_selection, mcp__plugin_tessa-qa_tessa-mcp__stop_review, mcp__plugin_tessa-qa_tessa-mcp__emit_tests, mcp__plugin_tessa-qa_tessa-mcp__update_export_file, mcp__plugin_tessa-qa_tessa-mcp__start_app, mcp__plugin_tessa-qa_tessa-mcp__stop_app, mcp__plugin_tessa-qa_tessa-mcp__propose_handoff, Read, Grep, Glob, Agent
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.9.0 from commands/tessa-export.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.1 from commands/tessa-export.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # /tessa-export
 
