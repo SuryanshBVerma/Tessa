@@ -1,16 +1,10 @@
-import {
-  copyFileSync,
-  mkdirSync,
-  openSync,
-  readSync,
-  closeSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
+import { closeSync, fstatSync, mkdirSync, openSync, readSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
 import { RunError } from './store.js';
 
 const MAX_BYTES = 10 * 1024 * 1024;
+/** Longest base64 text that can decode to MAX_BYTES, plus room for a data: URL prefix. */
+export const MAX_BASE64_CHARS = Math.ceil(MAX_BYTES / 3) * 4 + 64;
 
 const SIGNATURES: { ext: string; bytes: number[]; tail?: number[] }[] = [
   { ext: 'png', bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
@@ -35,11 +29,59 @@ export function sniffImage(header: Uint8Array): string | null {
 export type ScreenshotSource = { path: string } | { data_base64: string };
 
 /**
+ * UNC (\\server\share, //server/share) and device paths (\\?\, \\.\). Touching one, even to stat
+ * it, makes Windows connect to that server and offer the user's credentials.
+ */
+function isNetworkOrDevicePath(path: string): boolean {
+  return /^[\\/]{2}/.test(path);
+}
+
+/** Reads a local file through one handle, so it cannot be swapped between the checks and the copy. */
+function readLocalImage(path: string): Buffer {
+  if (!isAbsolute(path)) {
+    throw new RunError('screenshot path must be absolute');
+  }
+  if (isNetworkOrDevicePath(path)) {
+    throw new RunError('screenshot path must be on this machine, not a network or device path');
+  }
+  let fd: number;
+  try {
+    fd = openSync(path, 'r');
+  } catch {
+    throw new RunError('screenshot file does not exist');
+  }
+  try {
+    const stat = fstatSync(fd);
+    if (!stat.isFile()) {
+      throw new RunError('screenshot path is not a file');
+    }
+    if (stat.size > MAX_BYTES) {
+      throw new RunError('screenshot is larger than 10 MB');
+    }
+    // Read one byte more than allowed, in case the file grew after the stat.
+    const buffer = Buffer.alloc(Math.min(stat.size, MAX_BYTES) + 1);
+    let length = 0;
+    for (;;) {
+      const read = readSync(fd, buffer, length, buffer.length - length, length);
+      if (read === 0) break;
+      length += read;
+      if (length >= buffer.length) break;
+    }
+    if (length > MAX_BYTES) {
+      throw new RunError('screenshot is larger than 10 MB');
+    }
+    return buffer.subarray(0, length);
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/**
  * Copies a screenshot into the run directory and returns its path relative to the run.
  *
- * Host browsers save screenshots wherever they like, so any absolute path is accepted, but only
- * files that really are PNG, JPEG or WebP images (checked by their bytes) and under 10 MB are
- * copied. That keeps this from being a way to pull other files into the run.
+ * Host browsers save screenshots wherever they like, so any absolute local path is accepted, but
+ * only files that really are PNG, JPEG or WebP images (checked by their bytes) and under 10 MB
+ * are copied. That keeps this from being a way to pull other files into the run.
  */
 export function importScreenshot(
   runDir: string,
@@ -48,53 +90,27 @@ export function importScreenshot(
   index: number,
   source: ScreenshotSource,
 ): string {
-  let bytes: Buffer | null = null;
-  let header: Uint8Array;
+  let bytes: Buffer;
   if ('data_base64' in source) {
+    if (source.data_base64.length > MAX_BASE64_CHARS) {
+      throw new RunError('screenshot is larger than 10 MB');
+    }
     const cleaned = source.data_base64.replace(/^data:image\/[a-z]+;base64,/, '');
     bytes = Buffer.from(cleaned, 'base64');
     if (bytes.length > MAX_BYTES) {
       throw new RunError('screenshot is larger than 10 MB');
     }
-    header = bytes.subarray(0, 12);
   } else {
-    if (!isAbsolute(source.path)) {
-      throw new RunError('screenshot path must be absolute');
-    }
-    let size: number;
-    try {
-      const stat = statSync(source.path);
-      if (!stat.isFile()) {
-        throw new RunError('screenshot path is not a file');
-      }
-      size = stat.size;
-    } catch (error) {
-      if (error instanceof RunError) throw error;
-      throw new RunError('screenshot file does not exist');
-    }
-    if (size > MAX_BYTES) {
-      throw new RunError('screenshot is larger than 10 MB');
-    }
-    header = new Uint8Array(12);
-    const fd = openSync(source.path, 'r');
-    try {
-      readSync(fd, header, 0, 12, 0);
-    } finally {
-      closeSync(fd);
-    }
+    bytes = readLocalImage(source.path);
   }
 
-  const ext = sniffImage(header);
+  const ext = sniffImage(bytes.subarray(0, 12));
   if (ext === null) {
     throw new RunError('screenshot must be a PNG, JPEG or WebP image');
   }
   const relative = `screenshots/${testId}/${String(attempt)}-${String(index).padStart(2, '0')}.${ext}`;
   const destination = join(runDir, relative);
   mkdirSync(dirname(destination), { recursive: true });
-  if (bytes === null) {
-    copyFileSync((source as { path: string }).path, destination);
-  } else {
-    writeFileSync(destination, bytes);
-  }
+  writeFileSync(destination, bytes);
   return relative;
 }

@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
-import { fileName, fullUrlPattern, pascal } from '../src/export/emitters/common.js';
+import { comment, fileName, fullUrlPattern, pascal, str } from '../src/export/emitters/common.js';
 import { playwrightDotnet } from '../src/export/emitters/playwright-dotnet.js';
 import { playwrightTs } from '../src/export/emitters/playwright-ts.js';
 import { unifiedDiff } from '../src/export/handoff.js';
@@ -152,6 +152,34 @@ describe('emitter helpers', () => {
     expect(fileName(undefined, 'create-ticket', null, '.ts')).toBe('create-ticket.spec.ts');
     expect(fileName('{feature}/../{scenario}', 'a', 'b', '.ts')).not.toContain('/');
     expect(pascal('editor-creates-ticket')).toBe('EditorCreatesTicket');
+  });
+
+  it('never lets plan text end a comment line or a string literal', () => {
+    const payload = 'Process.Start("calc");';
+    // eslint-disable-next-line no-control-regex -- the test looks for control characters
+    const terminators = /[\r\n\u0085\u2028\u2029\u000b\u000c]/;
+    for (const sep of ['\r', '\n', '\u0085', '\u2028', '\u2029', '\u000b', '\u000c']) {
+      const hostile = `Open the page${sep}${payload}`;
+      expect(comment(hostile)).not.toMatch(terminators);
+      expect(str(hostile)).not.toMatch(terminators);
+      expect(JSON.parse(str(hostile))).toBe(hostile);
+    }
+    const sink = structuredClone(KITCHEN_SINK);
+    sink.story.title = `Title\u2028${payload}`;
+    for (const test of sink.tests) {
+      test.intent = `Intent\u2028${payload}`;
+      for (const step of test.steps) step.description = `Step\u2029${payload}`;
+    }
+    for (const emitter of [playwrightTs, playwrightDotnet]) {
+      for (const file of emitter.emit(input(sink))) {
+        for (const line of file.content.split(/\r?\n/)) {
+          if (!line.includes(payload)) continue;
+          // The payload may only appear inside a comment or a string literal on its line.
+          expect(line, `${emitter.target} ${file.path}`).toMatch(/^\s*(\/\/|#|\[|.*"[^"]*Process)/);
+          expect(line).not.toMatch(/[\u0085\u2028\u2029]/);
+        }
+      }
+    }
   });
 });
 
@@ -369,6 +397,28 @@ describe('update_export_file', () => {
       expect(bad.isError, path).toBe(true);
     }
   });
+
+  it('refuses project and runner files, which validate_export would obey', async () => {
+    const { client, runId } = await exportable();
+    await call(client, 'emit_tests', { run_id: runId });
+    for (const path of [
+      'playwright.config.ts',
+      'sub/playwright.config.mjs',
+      'tsconfig.json',
+      'package.json',
+      'Tessa.Generated.csproj',
+      'Directory.Build.props',
+      'nuget.config',
+    ]) {
+      const bad = await call(client, 'update_export_file', {
+        story: 'create-ticket',
+        target: 'playwright-ts',
+        path,
+        content: '{}',
+      });
+      expect(bad.isError, path).toBe(true);
+    }
+  });
 });
 
 describe('handoff', () => {
@@ -384,8 +434,10 @@ describe('handoff', () => {
         from: 'ai-test-artifacts/export/playwright-ts/create-ticket/create-ticket.spec.ts',
         to: 'tests/e2e/create-ticket.spec.ts',
         action: 'create',
+        lines: expect.any(Number),
       },
     ]);
+    expect(proposal.data.truncated).toBe(false);
     expect(proposal.data.diff).toContain('+++ b/tests/e2e/create-ticket.spec.ts');
     const dest = join(workspace, 'tests', 'e2e', 'create-ticket.spec.ts');
     expect(existsSync(dest)).toBe(false);
@@ -437,6 +489,48 @@ describe('handoff', () => {
       '--- a/x.ts\n+++ b/x.ts\n a\n+B\n-b\n c\n',
     );
     expect(unifiedDiff('x.ts', null, 'new')).toBe('--- /dev/null\n+++ b/x.ts\n+new\n');
+  });
+});
+
+describe('handoff destinations', () => {
+  it('refuses control folders as the test folder', async () => {
+    const { workspace, client, runId } = await exportable();
+    await call(client, 'emit_tests', { run_id: runId });
+    const configFile = join(workspace, '.tessa', 'config.yaml');
+    for (const dir of [
+      '.github/workflows',
+      '.git/hooks',
+      'tests/node_modules/x',
+      '.claude/agents',
+    ]) {
+      const config = readFileSync(configFile, 'utf8').replace(/test_dir: .*/, `test_dir: ${dir}`);
+      writeFileSync(configFile, config);
+      const proposal = await call(client, 'propose_handoff', {
+        story: 'create-ticket',
+        target: 'playwright-ts',
+      });
+      expect(proposal.isError, dir).toBe(true);
+      expect(proposal.data.error).toMatch(/refusing to hand off into/);
+    }
+  });
+
+  it('hands off only test files, whatever the manifest says', async () => {
+    const { workspace, client, runId } = await exportable();
+    await call(client, 'emit_tests', { run_id: runId });
+    const manifestFile = join(
+      workspace,
+      'ai-test-artifacts/export/playwright-ts/create-ticket/export-manifest.json',
+    );
+    const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'));
+    for (const file of manifest.files) file.handoff = true;
+    writeFileSync(manifestFile, JSON.stringify(manifest));
+    const proposal = await call(client, 'propose_handoff', {
+      story: 'create-ticket',
+      target: 'playwright-ts',
+    });
+    expect(proposal.data.changes.map((c: { to: string }) => c.to)).toEqual([
+      'tests/e2e/create-ticket.spec.ts',
+    ]);
   });
 });
 

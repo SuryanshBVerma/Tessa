@@ -12,6 +12,7 @@ Status: pre-1.0. The pilot on a real project is still to come.
 
 - Install: [docs/INSTALL.md](docs/INSTALL.md)
 - Design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Security: [docs/SECURITY.md](docs/SECURITY.md)
 
 ## Commands
 

@@ -49,9 +49,19 @@ const PLAYWRIGHT_TOOLS = [
 
 /**
  * Tools a command must never pre-approve in Claude Code, so the host still asks before each
- * call: they write into the repository or wipe the database.
+ * call: they write into the repository, wipe the database, run generated code, start a browser
+ * outside the host, or record a decision that belongs to the user.
  */
-const NEVER_PREAPPROVED = new Set(['apply_handoff', 'init_workspace', 'reset_db']);
+export const NEVER_PREAPPROVED = new Set([
+  'apply_handoff',
+  'init_workspace',
+  'reset_db',
+  'validate_export',
+  'capture_session',
+  'approve_plan',
+  'record_selection',
+  'write_host_files',
+]);
 
 function roleOf(agent: Source): Role | null {
   const role = agent.name.replace(/^tessa-/, '').replaceAll('-', '_');

@@ -1,5 +1,6 @@
 // Validates exported tests: compile them, and optionally run them once against the app.
 import { execFile } from 'node:child_process';
+import { appUrl } from '../util/app-url.js';
 import { existsSync, globSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, posix } from 'node:path';
@@ -366,7 +367,7 @@ export class SessionCapture {
         throw new ExportError('@playwright/test is not installed in this workspace');
       mkdirSync(dirname(file), { recursive: true });
       rmSync(file, { force: true });
-      const loginUrl = new URL(ctx.config.auth.login_path, ctx.config.app.url).toString();
+      const loginUrl = appUrl(ctx.config.app.url, ctx.config.auth.login_path);
       const created: { done: Promise<ExecResult>; result?: ExecResult } = {
         done: exec(
           process.execPath,

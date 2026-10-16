@@ -20,9 +20,16 @@ export interface Emitter {
   emit(input: EmitInput): EmittedFile[];
 }
 
-/** A string literal valid in both TypeScript and C#. JSON escaping covers quotes and control characters. */
+/**
+ * A string literal valid in both TypeScript and C#. JSON escaping covers quotes and C0 control
+ * characters; NEL, LINE SEPARATOR and PARAGRAPH SEPARATOR end a line in C# (and the last two in
+ * older JavaScript), so they are escaped too.
+ */
 export function str(value: string): string {
-  return JSON.stringify(value);
+  return JSON.stringify(value)
+    .replaceAll('\u0085', '\\u0085')
+    .replaceAll('\u2028', '\\u2028')
+    .replaceAll('\u2029', '\\u2029');
 }
 
 export function pascal(id: string): string {
@@ -74,9 +81,14 @@ export function fileName(
   return `${name}${ext}`;
 }
 
-/** Comment line safe in both languages: no line breaks, no comment terminators. */
+/**
+ * Comment line safe in both languages. Plan text is untrusted, so every character that can end a
+ * line in TypeScript or C# (CR, LF, NEL, U+2028, U+2029) and every other control character
+ * becomes a space; otherwise the rest of the text would be emitted as live code.
+ */
 export function comment(text: string): string {
-  return text.replace(/\r?\n/g, ' ').replace(/\*\//g, '* /');
+  // eslint-disable-next-line no-control-regex -- matching control characters is the point
+  return text.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ').replace(/\*\//g, '* /');
 }
 
 export function header(input: EmitInput, prefix: string): string[] {

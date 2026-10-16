@@ -36,7 +36,8 @@ results) and the target framework.
    follow the `tessa-exporter` agent's instructions yourself with the `export-conventions` skill. The user may be
    asked to sign in, in a separate browser window, once per persona.
 3. **Gate: move into the repo.** Show the user the summary, the validation result, and the
-   handoff diff. Ask: "Move these tests into `<test_dir>`?" Call `apply_handoff` with the
+   handoff diff. If the proposal is `truncated`, say the diff was cut short and ask the user to
+   open each file in `changes` before deciding. Ask: "Move these tests into `<test_dir>`?" Call `apply_handoff` with the
    proposal id only if they say yes. If they ask for changes, make them in the export folder,
    validate again, and propose again.
 4. **Finish.** Stop anything Tessa started (`stop_review`, `stop_app`). Report the files

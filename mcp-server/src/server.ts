@@ -48,7 +48,7 @@ import {
   resolveCompleteRun,
 } from './runs/history.js';
 import { buildResults } from './runs/results.js';
-import { importScreenshot } from './runs/screenshots.js';
+import { importScreenshot, MAX_BASE64_CHARS } from './runs/screenshots.js';
 import {
   artifactsDir,
   createRun,
@@ -250,7 +250,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         overwrite: z.boolean().optional(),
         dry_run: z.boolean().optional(),
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     },
     (args) => {
       try {
@@ -601,7 +601,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         screenshot: z
           .union([
             z.object({ path: z.string().min(1) }),
-            z.object({ data_base64: z.string().min(1) }),
+            z.object({ data_base64: z.string().min(1).max(MAX_BASE64_CHARS) }),
           ])
           .optional(),
       },
@@ -1488,7 +1488,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         run_once: z.boolean().optional().describe('Defaults to export.validate.run_once.'),
         browser_channel: channelArg,
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     },
     async ({ story, target, run_once, browser_channel }) => {
       try {
@@ -1521,7 +1521,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           .describe('How long to wait this call; default 50.'),
         browser_channel: channelArg,
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
     async ({ persona, wait_seconds, browser_channel }) => {
       try {
@@ -1570,7 +1570,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         target: z.enum(['playwright-ts', 'playwright-dotnet']),
         proposal_id: z.string().regex(/^[0-9a-f]{16}$/),
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     },
     ({ story, target, proposal_id }) => {
       try {

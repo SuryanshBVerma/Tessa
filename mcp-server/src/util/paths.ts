@@ -1,5 +1,5 @@
-import { realpathSync } from 'node:fs';
-import { isAbsolute, relative, resolve, sep } from 'node:path';
+import { lstatSync, realpathSync } from 'node:fs';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 export class PathEscapeError extends Error {
   constructor(readonly requested: string) {
@@ -27,16 +27,36 @@ export function resolveInside(workspace: string, requested: string): string {
     throw new PathEscapeError(requested);
   }
   let realRoot: string;
-  let realTarget: string;
   try {
     realRoot = realpathSync.native(root);
-    realTarget = realpathSync.native(target);
   } catch {
-    // Target does not exist yet; the lexical check above is all we can do.
+    // The workspace itself does not exist (yet); nothing on disk can redirect the path.
     return target;
   }
-  if (!isInside(realRoot, realTarget)) {
-    throw new PathEscapeError(requested);
+  // The target may not exist yet, but a parent folder may be a symlink out of the workspace:
+  // resolve the nearest part that exists and check where it really is.
+  let existing = target;
+  for (;;) {
+    let isLink: boolean;
+    try {
+      isLink = lstatSync(existing).isSymbolicLink();
+    } catch {
+      const parent = dirname(existing);
+      if (parent === existing) return target;
+      existing = parent;
+      continue;
+    }
+    let real: string;
+    try {
+      real = realpathSync.native(existing);
+    } catch {
+      // A dangling link: writing through it would create its target, wherever that is.
+      if (isLink) throw new PathEscapeError(requested);
+      return target;
+    }
+    if (!isInside(realRoot, real)) {
+      throw new PathEscapeError(requested);
+    }
+    return target;
   }
-  return target;
 }

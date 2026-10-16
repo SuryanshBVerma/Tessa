@@ -173,6 +173,9 @@ describe('Claude Code files', () => {
     expect(allowed('.claude/commands/tessa-export.md')).not.toContain('apply_handoff');
     expect(allowed('.claude/commands/tessa-init.md')).toContain('mcp__tessa-mcp__detect_stack');
     expect(allowed('.claude/commands/tessa-init.md')).not.toContain('init_workspace');
+    expect(allowed('.claude/commands/tessa-export.md')).not.toContain('validate_export');
+    expect(allowed('.claude/commands/tessa-test-story.md')).not.toContain('approve_plan');
+    expect(allowed('.claude/commands/tessa-export.md')).not.toContain('record_selection');
     expect(files['.claude/commands/tessa-export.md']).toContain('$ARGUMENTS');
   });
 

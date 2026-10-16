@@ -5,13 +5,36 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, posix } from 'node:path';
 import { writeAtomic } from '../runs/store.js';
 import { resolveInside } from '../util/paths.js';
-import { exportDir, ExportError, readManifest, type ExportCtx } from './export.js';
+import { exportDir, ExportError, HANDOFF, readManifest, type ExportCtx } from './export.js';
 
 const DEFAULT_TEST_DIRS: Record<string, string> = {
   'playwright-ts': 'tests/e2e',
   'playwright-dotnet': 'tests/E2E',
 };
 const MAX_DIFF_LINES = 400;
+/**
+ * Folders that configure Git, CI, editors, agent hosts or Tessa itself. Tests never belong there,
+ * and a file written there could run code or change what an agent may do.
+ */
+const CONTROL_DIRS = new Set([
+  '.git',
+  '.github',
+  '.gitlab',
+  '.vscode',
+  '.claude',
+  '.tessa',
+  'node_modules',
+]);
+
+function checkDestination(to: string): void {
+  const segments = to.split('/').map((s) => s.toLowerCase());
+  const control = segments.find((s) => CONTROL_DIRS.has(s));
+  if (control !== undefined) {
+    throw new ExportError(
+      `refusing to hand off into ${control}/; set export.conventions.test_dir to the repo's test folder`,
+    );
+  }
+}
 
 export interface HandoffChange {
   from: string;
@@ -60,9 +83,11 @@ function plan(ctx: ExportCtx, target: string, story: string) {
   const testDir = ctx.config.export.conventions.test_dir ?? DEFAULT_TEST_DIRS[target] ?? 'tests';
   const src = exportDir(ctx, target, story);
   const changes: (HandoffChange & { content: string; before: string | null })[] = [];
-  for (const file of manifest.files.filter((f) => f.handoff)) {
+  // The manifest is a file on disk; decide what is a test file from its path, not its flag.
+  for (const file of manifest.files.filter((f) => f.handoff && HANDOFF.test(f.path))) {
     const content = readFileSync(resolveInside(src, file.path), 'utf8');
     const to = posix.join(testDir, file.path);
+    checkDestination(to);
     const dest = resolveInside(ctx.workspace, to);
     const before = existsSync(dest) ? readFileSync(dest, 'utf8') : null;
     const action =
@@ -95,15 +120,24 @@ export function proposeHandoff(ctx: ExportCtx, target: string, story: string) {
     .map((c) => unifiedDiff(c.to, c.before, c.content))
     .join('\n');
   const lines = diff.split('\n');
-  if (lines.length > MAX_DIFF_LINES) {
+  const truncated = lines.length > MAX_DIFF_LINES;
+  if (truncated) {
     diff = `${lines.slice(0, MAX_DIFF_LINES).join('\n')}\n... (${String(lines.length - MAX_DIFF_LINES)} more lines)`;
   }
   return {
     proposal_id: id,
     test_dir: testDir,
-    changes: changes.map(({ from, to, action }) => ({ from, to, action })),
+    changes: changes.map(({ from, to, action, content }) => ({
+      from,
+      to,
+      action,
+      lines: content.split('\n').length,
+    })),
     diff,
-    note: 'Nothing has been written. Show the user this diff; call apply_handoff with proposal_id only after they confirm.',
+    truncated,
+    note: truncated
+      ? 'Nothing has been written. The diff is cut short: tell the user so, and ask them to open every file listed in changes (the from paths) before they confirm. Call apply_handoff with proposal_id only after they confirm.'
+      : 'Nothing has been written. Show the user this diff; call apply_handoff with proposal_id only after they confirm.',
   };
 }
 

@@ -158,6 +158,26 @@ describe('record_step', () => {
     expect(data.error).toMatch(/PNG, JPEG or WebP/);
   });
 
+  it('refuses network and device paths before touching them', async () => {
+    const workspace = fixture();
+    const { client, runId } = await begin(workspace);
+    const slash = String.fromCharCode(92);
+    for (const path of [
+      `${slash}${slash}attacker.example${slash}share${slash}a.png`,
+      '//attacker.example/share/a.png',
+      `${slash}${slash}?${slash}C:${slash}a.png`,
+    ]) {
+      const { data } = await call(client, 'record_step', {
+        run_id: runId,
+        test_id: 'editor-creates-ticket',
+        index: 0,
+        status: 'passed',
+        screenshot: { path },
+      });
+      expect(data.error, path).toMatch(/not a network or device path|must be absolute/);
+    }
+  });
+
   it('refuses an unknown run id and path-like run ids', async () => {
     const client = await connect(fixture());
     for (const runId of ['20990101T000000Z', '../../etc']) {

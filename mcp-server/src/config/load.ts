@@ -36,9 +36,21 @@ function warning(path: string, message: string): ConfigIssue {
 
 export function parseConfigText(text: string): { data?: unknown; issues: ConfigIssue[] } {
   // uniqueKeys rejects duplicate keys; maxAliasCount bounds alias expansion ("billion laughs").
-  const doc = parseDocument(text, { uniqueKeys: true, prettyErrors: true });
+  // prettyErrors is off: it quotes the offending source line, which for a file that is not
+  // really a config (a .env, say) would put secrets in the tool's output.
+  const doc = parseDocument(text, { uniqueKeys: true, prettyErrors: false });
   if (doc.errors.length > 0) {
-    return { issues: doc.errors.map((e) => error('/', `YAML: ${e.message}`)) };
+    return {
+      issues: doc.errors.map((e) => {
+        const before = text.slice(0, e.pos[0]);
+        const line = before.split('\n').length;
+        const col = e.pos[0] - before.lastIndexOf('\n');
+        return error(
+          '/',
+          `YAML: ${e.code.toLowerCase().replaceAll('_', ' ')} at line ${String(line)}, column ${String(col)}`,
+        );
+      }),
+    };
   }
   try {
     return { data: doc.toJS({ maxAliasCount: 50 }), issues: [] };
@@ -122,6 +134,13 @@ export function checkSemantics(config: TessaConfig, workspace: string): ConfigIs
 
 export function loadConfig(options: LoadOptions): LoadResult {
   const file = options.file ?? DEFAULT_CONFIG_PATH;
+  if (!/.ya?ml$/i.test(file)) {
+    return {
+      ok: false,
+      file,
+      issues: [error('/', 'the config file must be a .yaml or .yml file')],
+    };
+  }
   let absolute: string;
   try {
     absolute = resolveInside(options.workspace, file);
