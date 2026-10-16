@@ -1,6 +1,4 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
 import { call, connect, SAMPLE_APP, tempWorkspace } from './helpers.js';
@@ -20,8 +18,6 @@ function fixture() {
     'a.sql': '',
   });
 }
-
-const sampleReady = existsSync(join(SAMPLE_APP, '.env')) && existsSync(join(SAMPLE_APP, '.tessa'));
 
 describe('capture_env_state', () => {
   it('uses the persona seed profile and omits Git facts outside a repository', async () => {
@@ -77,15 +73,4 @@ describe('capture_env_state', () => {
     expect(data.environment.commit).toBe(head);
     expect(typeof data.environment.dirty).toBe('boolean');
   });
-});
-
-describe.skipIf(!sampleReady)('capture_env_state after seeding', () => {
-  it('reports the profile actually seeded in this session', async () => {
-    const client = await connect(SAMPLE_APP);
-    expect((await call(client, 'seed_db', { profile: 'admin-heavy' })).data.ok).toBe(true);
-    const { data } = await call(client, 'capture_env_state', { persona: 'viewer' });
-    expect(data.env_state.seed_profile).toBe('admin-heavy');
-    expect(data.seed_profile_source).toBe('seeded-this-session');
-    expect((await call(client, 'reset_db', { profile: 'default' })).data.ok).toBe(true);
-  }, 60_000);
 });

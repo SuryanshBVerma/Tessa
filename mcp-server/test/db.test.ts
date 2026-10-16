@@ -199,6 +199,16 @@ describe.skipIf(!sampleReady)('seeding the sample app database', () => {
     expect(await count('SELECT count(*) AS n FROM users')).toBe(4);
   }, 60_000);
 
+  // Lives here, not in env.test.ts, so it never races the other tests on the shared database.
+  it('reports the profile actually seeded in this session', async () => {
+    const client = await connect(SAMPLE_APP);
+    expect((await call(client, 'seed_db', { profile: 'admin-heavy' })).data.ok).toBe(true);
+    const { data } = await call(client, 'capture_env_state', { persona: 'viewer' });
+    expect(data.env_state.seed_profile).toBe('admin-heavy');
+    expect(data.seed_profile_source).toBe('seeded-this-session');
+    expect((await call(client, 'reset_db', { profile: 'default' })).data.ok).toBe(true);
+  }, 60_000);
+
   it('rolls back the whole profile when one file fails', async () => {
     const loaded = loadConfig({ workspace: SAMPLE_APP });
     if (!loaded.ok) throw new Error('sample config');

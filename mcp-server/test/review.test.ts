@@ -160,7 +160,8 @@ describe('review server', () => {
 
     for (const path of [
       '',
-      `${token.slice(0, -1)}x/`,
+      // A token one character off; never the real one, whatever its last character.
+      `${token.slice(0, -1)}${token.endsWith('x') ? 'y' : 'x'}/`,
       `${token}x/`,
       `${token}/run-state.json`,
       `${token}/results.json`,

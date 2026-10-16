@@ -203,7 +203,8 @@ describe('detectStack', () => {
     const report = detectStack(SAMPLE_APP);
     expect(report.stack).toMatchObject({ name: 'react-router', adapter_available: true });
     expect(report.start_command).toBe('npm run dev');
-    expect(report.export_targets).toEqual([]);
+    // The sample app uses Playwright for its exported tests.
+    expect(report.export_targets.map((t) => t.name)).toEqual(['playwright-ts']);
   });
 
   it('prefers the more specific framework and flags ambiguous export targets', () => {
