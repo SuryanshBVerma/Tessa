@@ -1,6 +1,6 @@
 {
   "name": "tessa-mcp",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "description": "MCP server that owns every deterministic or side-effecting Tessa operation",
   "license": "MIT",
@@ -19,10 +19,12 @@
     "@modelcontextprotocol/sdk": "1.32.1",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
+    "pg": "8.23.1",
     "yaml": "2.9.1",
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@types/pg": "8.23.1",
     "json-schema-to-typescript": "16.0.0"
   },
   "bin": {

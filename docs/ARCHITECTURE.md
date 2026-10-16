@@ -11,7 +11,7 @@ side-effecting operation. JSON schemas are the contracts between all parts.
 3. Planner produces scenarios in the neutral test format → `plans/<story>/tests.json`.
 4. **Gate:** the user approves or edits the plan.
 5. App is started and the database seeded with the persona's seed profile.
-6. **Gate:** for each persona, Tessa opens the login page and waits for the user to sign in; session state is saved.
+6. **Gate:** for each persona, Tessa opens the login page in the host browser and waits for the user to sign in. The host browser keeps the session.
 7. Executor runs each scenario step by step, capturing evidence and environment state.
 8. Triage classifies failures; results are written to `runs/<timestamp>/results.json`.
 9. The report is rendered and served by the local review server.
@@ -40,7 +40,7 @@ Subagents get narrow context and return structured artifacts, not prose.
 | `ui-flow-discovery`   | Using context queries to understand screens, guards, navigation                                    |
 | `adapter-<framework>` | Where routes, guards, permissions, test IDs live (React Router first; Next.js, Angular, Vue later) |
 | `test-planning`       | Neutral test format rules, coverage heuristics, persona × permission matrices, dedup               |
-| `browser-execution`   | Step protocol, waits, evidence capture, auth-pause protocol                                        |
+| `browser-execution`   | Step protocol, waits, evidence capture, the sign-in pause in the host browser                      |
 | `failure-triage`      | Failure classes and the evidence each needs                                                        |
 | `export-conventions`  | Detecting and following page objects, fixtures, naming, layout                                     |
 
@@ -54,7 +54,6 @@ Stack adapters are the main extension point: an adapter skill plus an extractor 
 | App lifecycle      | `start_app`, `stop_app`, `health_check`                                                                                                                              |
 | Database           | `seed_db(profile)`, `reset_db` — allowlisted scripts only, local hosts only                                                                                          |
 | Context            | `build_static_map`, `context_freshness`, `routes_for_feature`, `components_for_route`, `permissions_for_route`, `api_calls_for_component`, `selectors_for_component` |
-| Auth               | `await_manual_login(persona)`, `save_session_state`                                                                                                                  |
 | Evidence & results | `capture_env_state`, `record_step`, `write_results`                                                                                                                  |
 | Review             | `render_report`, `serve_review`, `get_selection`, `stop_review`                                                                                                      |
 | Runs               | `list_runs`, `diff_runs`, `failed_test_ids`                                                                                                                          |
@@ -64,8 +63,17 @@ Internal modules: static extractor + framework adapters (ts-morph / tree-sitter)
 router, report renderer (fixed HTML/CSS/JS template), review server, emitters per target, run diff
 engine, export validator.
 
-External MCP servers (configured, not built): browser (VS Code agent browser or Playwright MCP),
-optional knowledge graph, optional story source (Jira/Azure DevOps, read-only, post-v1.0).
+External capabilities (used, not built): the host's browser (the VS Code agent browser or Claude Code's
+browser) by default, optional knowledge graph, optional story source (Jira/Azure DevOps, read-only,
+post-v1.0).
+
+### Sign-in
+
+Sign-in is an instruction, not a tool. Tessa always drives the host's browser. When a persona needs
+a session, the executor opens the app's `auth.login_path`, asks the user to sign in, and waits for
+them to confirm. The host browser keeps the session (and offers its own dev tools), so Tessa never
+sees, stores or replays credentials or session state. To switch persona, the executor asks the user
+to sign out and sign in again as that persona.
 
 ## 5. Frontend context layers
 
@@ -227,7 +235,7 @@ ai-test-artifacts/
   runs/<ts>/        results.json, report.html, screenshots/, env-state.json   (gitignore)
   diffs/            <runA>__<runB>.json + .html                        (gitignore)
   export/<fw>/      generated tests, export-summary.md                 (commit after review)
-  .session/         stored auth state                                  (gitignore)
+  .session/         reserved for exported tests' storage state         (gitignore)
 ```
 
 ## 15. Plugin layout (this repo, target)
@@ -237,7 +245,7 @@ agents/        orchestrator, context-builder, planner, executor, triage, exporte
 skills/        story-analysis, ui-flow-discovery, test-planning, browser-execution,
                failure-triage, export-conventions, adapters/<framework>/
 commands/      tessa-init, tessa-refresh-context, tessa-test-story, tessa-rerun-failed, tessa-diff, tessa-export
-mcp-server/    src/{config,app,db,context,auth,results,review,runs,export}, emitters/, extractors/, templates/report/
+mcp-server/    src/{config,app,db,context,results,review,runs,export}, emitters/, extractors/, templates/report/
 schemas/       *.schema.json
 templates/     config.yaml, kg-mapping.yaml, hints.md, gitignore
 testing/       sample-app/ and other test targets used during development

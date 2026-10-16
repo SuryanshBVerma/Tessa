@@ -113,6 +113,27 @@ export function validate<N extends SchemaName>(
   return { ok: false, issues: toIssues(check.errors ?? []) };
 }
 
+/**
+ * Validates data against one definition inside a schema, e.g. ('results', 'envState') for
+ * results.schema.json#/$defs/envState.
+ */
+export function validateDefinition<T>(
+  name: SchemaName,
+  definition: string,
+  data: unknown,
+): ValidationResult<T> {
+  validatorFor(name);
+  const id = loadSchema(name).$id;
+  const check = typeof id === 'string' ? ajv.getSchema(`${id}#/$defs/${definition}`) : undefined;
+  if (check === undefined) {
+    throw new Error(`${name}.schema.json has no definition "${definition}"`);
+  }
+  if (check(data)) {
+    return { ok: true, value: data as T };
+  }
+  return { ok: false, issues: toIssues(check.errors ?? []) };
+}
+
 export function formatIssues(issues: readonly SchemaIssue[]): string {
   return issues.map((issue) => `  ${issue.path}: ${issue.message}`).join('\n');
 }
