@@ -5,3 +5,5 @@ docs/DECISIONS.md
 **/dist/
 **/coverage/
 package-lock.json
+**/build/
+**/.react-router/

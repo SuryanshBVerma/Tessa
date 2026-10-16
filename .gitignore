@@ -19,3 +19,7 @@ coverage/
 ai-test-artifacts/runs/
 ai-test-artifacts/diffs/
 ai-test-artifacts/.session/
+
+# React Router generated output
+.react-router/
+build/

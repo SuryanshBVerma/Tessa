@@ -3,7 +3,16 @@ import prettier from 'eslint-config-prettier';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/', '**/node_modules/', '**/coverage/', 'Context/'] },
+  {
+    ignores: [
+      '**/dist/',
+      '**/build/',
+      '**/.react-router/',
+      '**/node_modules/',
+      '**/coverage/',
+      'Context/',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {
@@ -19,6 +28,16 @@ export default tseslint.config(
       'no-implied-eval': 'off',
       '@typescript-eslint/no-implied-eval': 'error',
       'no-new-func': 'error',
+      // React Router uses thrown redirects and data() responses for control flow.
+      '@typescript-eslint/only-throw-error': [
+        'error',
+        {
+          allow: [
+            { from: 'lib', name: 'Response' },
+            { from: 'package', package: 'react-router', name: 'DataWithResponseInit' },
+          ],
+        },
+      ],
     },
   },
   {

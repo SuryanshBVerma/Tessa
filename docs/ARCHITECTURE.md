@@ -240,7 +240,7 @@ commands/      tessa-init, tessa-refresh-context, tessa-test-story, tessa-rerun-
 mcp-server/    src/{config,app,db,context,auth,results,review,runs,export}, emitters/, extractors/, templates/report/
 schemas/       *.schema.json
 templates/     config.yaml, kg-mapping.yaml, hints.md, gitignore
-sample-app/    test target used throughout development
+testing/       sample-app/ and other test targets used during development
 docs/          ARCHITECTURE.md
 ```
 

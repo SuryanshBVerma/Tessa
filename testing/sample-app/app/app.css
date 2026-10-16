@@ -1,0 +1,155 @@
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --fg: #1d1d1f;
+  --muted: #6b6b70;
+  --border: #d9d9de;
+  --accent: #2f5bd3;
+  --error: #b42318;
+  --open: #0f7b3f;
+  --closed: #6b6b70;
+  font-family: system-ui, sans-serif;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #17171a;
+  --fg: #ececf0;
+  --muted: #a0a0a8;
+  --border: #34343a;
+  --accent: #8aa8ff;
+  --error: #ff8a80;
+  --open: #6ee7a0;
+  --closed: #a0a0a8;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.shell {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.topbar a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.topbar a.active {
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--muted);
+}
+
+.page {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.narrow {
+  max-width: 22rem;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stack label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+input,
+select,
+textarea,
+button,
+.button {
+  font: inherit;
+  padding: 0.4rem 0.6rem;
+}
+
+.button {
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  text-decoration: none;
+  border-radius: 4px;
+}
+
+button.link {
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.badge.open {
+  color: var(--open);
+}
+
+.badge.closed {
+  color: var(--closed);
+}
+
+.error {
+  color: var(--error);
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+}
