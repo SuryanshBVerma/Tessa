@@ -57,6 +57,7 @@ describe('tessa-mcp server', () => {
       'update_export_file',
       'validate_config',
       'validate_export',
+      'write_host_files',
       'write_results',
     ]);
     expect(byName.load_config?.annotations?.readOnlyHint).toBe(true);

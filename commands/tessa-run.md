@@ -55,7 +55,7 @@ skill. The user will be asked to sign in for each persona; that pause is expecte
 ## 4. Triage
 
 If any test failed or errored, hand the run id to the `tessa-triage` agent. If your host cannot
-run subagents, follow `agents/triage.md` yourself with the `failure-triage` skill. Triage only
+run subagents, follow the `tessa-triage` agent's instructions yourself with the `failure-triage` skill. Triage only
 reads and records; it never changes the app, the plan or the tests.
 
 ## 5. Finish

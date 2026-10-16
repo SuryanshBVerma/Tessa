@@ -64,7 +64,7 @@ your host cannot run subagents, follow the `browser-execution` skill yourself an
 - Call `diff_runs` with the original run as `run_a` and the rerun as `run_b`. It compares only
   the rerun tests. Give the user the HTML path.
 - If any test still fails, hand the rerun and the original to the `tessa-triage` agent (or
-  follow `agents/triage.md` yourself). A test that passes now with no code change between the
+  follow the `tessa-triage` agent's instructions yourself). A test that passes now with no code change between the
   runs is flaky; triage says why when it can.
 - Call `render_report` and give the user the report path.
 - For each rerun test, say whether it is fixed or still failing, with its triage class.

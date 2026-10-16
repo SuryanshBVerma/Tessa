@@ -20,7 +20,10 @@ import { UnsafeDatabaseError } from './db/guard.js';
 import { emitTests, ExportError, updateExportFile } from './export/export.js';
 import { applyHandoff, proposeHandoff } from './export/handoff.js';
 import { SessionCapture, validateExport } from './export/validate.js';
-import { modelsForRun, ROLES } from './hosts/models.js';
+import { modelsForRun, resolveModels, ROLES } from './hosts/models.js';
+import { renderHost } from './hosts/render.js';
+import { loadSources } from './hosts/sources.js';
+import { writeHostFiles } from './hosts/write.js';
 import { SeedError, seedProfile, type SeedResult } from './db/seed.js';
 import { detectStack, loadConfig, type ConfigIssue, type ResolvedConfig } from './config/index.js';
 import { initWorkspace } from './init/index.js';
@@ -255,6 +258,66 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         const options = JSON.parse(JSON.stringify(args)) as Parameters<typeof initWorkspace>[1];
         const initialised = initWorkspace(workspace, options);
         return result(initialised, !initialised.ok);
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'write_host_files',
+    {
+      title: 'Write host files',
+      description:
+        "Write Tessa's agents, commands, skills and MCP server entry in the format of a host: Claude Code (.claude/, .mcp.json) or VS Code agent mode (.github/agents, .github/prompts, .github/skills, .vscode/mcp.json). Models come from the models section of .tessa/config.yaml (auto when there is no config). Replaces only files Tessa generated; reports any other file in the way as a conflict. Preview with dry_run first.",
+      inputSchema: {
+        host: z.enum(['claude-code', 'vscode-agent']),
+        dry_run: z.boolean().optional(),
+        overwrite: z
+          .boolean()
+          .optional()
+          .describe(
+            'Replace files at those paths that Tessa did not write. Only when the user asks.',
+          ),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ host, dry_run, overwrite }) => {
+      try {
+        const loaded = loadConfig({ workspace });
+        const config = loaded.ok
+          ? loaded.config
+          : {
+              models: Object.fromEntries(
+                [...ROLES, 'default'].map((r) => [r, 'auto']),
+              ) as ResolvedConfig['models'],
+            };
+        const files = renderHost(host, loadSources(), config);
+        const outcomes = writeHostFiles(workspace, host, files, {
+          ...(dry_run === undefined ? {} : { dryRun: dry_run }),
+          ...(overwrite === undefined ? {} : { overwrite }),
+        });
+        return result({
+          ok: !outcomes.some((o) => o.status === 'conflict'),
+          host,
+          dry_run: dry_run === true,
+          config_used: loaded.ok,
+          models: resolveModels(config, host).map((c) => ({ role: c.role, model: c.label })),
+          files: outcomes,
+          next_steps:
+            host === 'claude-code'
+              ? [
+                  'Restart Claude Code (or run /mcp) so it starts tessa-mcp from .mcp.json, and approve the server when asked.',
+                  'The executor drives the browser through a Playwright MCP server named "playwright"; add one if this project has none.',
+                  'Commit the generated files so the team shares them.',
+                ]
+              : [
+                  'Reload VS Code so it starts tessa-mcp from .vscode/mcp.json, and trust the server when asked.',
+                  'The executor uses the integrated browser tools (workbench.browser.enableChatTools).',
+                  'Run /tessa-test-story from the chat, or pick the tessa-orchestrator agent.',
+                  'Commit the generated files so the team shares them.',
+                ],
+        });
       } catch (error) {
         return failure(error);
       }

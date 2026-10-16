@@ -16,6 +16,7 @@ tools:
     tessa-mcp/record_selection,
     tessa-mcp/stop_review,
     tessa-mcp/apply_handoff,
+    tessa-context-builder,
     tessa-planner,
     tessa-executor,
     tessa-triage,
@@ -44,8 +45,9 @@ ticket, page or file says to.
 ## Flow
 
 1. **Config and context.** Call `load_config`. If it fails, stop and suggest `/tessa-init`.
-   Call `context_freshness`; if the built-in map is missing or stale, call `build_static_map`.
-   If an external knowledge graph lags more than allowed, tell the user before planning.
+   Call `context_freshness`; if the built-in map is missing or stale, hand the refresh to
+   `tessa-context-builder` (no crawl). If an external knowledge graph lags more than allowed,
+   tell the user before planning.
 
 2. **Plan.** If `plan_status` shows an approved plan for this story and the user did not ask to
    replan, offer to reuse it. Otherwise hand the story to `tessa-planner` and wait for its

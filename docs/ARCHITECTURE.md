@@ -252,9 +252,9 @@ ai-test-artifacts/
 ## 15. Plugin layout (this repo, target)
 
 ```
-agents/        orchestrator, context-builder, planner, executor, triage, exporter
+agents/        orchestrator, context-builder, planner, executor, triage, exporter (host-neutral)
 skills/        story-analysis, ui-flow-discovery, test-planning, browser-execution,
-               failure-triage, export-conventions, adapters/<framework>/
+               failure-triage, export-conventions, adapter-<framework>/
 commands/      tessa-init, tessa-refresh-context, tessa-test-story, tessa-rerun-failed, tessa-diff, tessa-export
 mcp-server/    src/{config,app,db,context,results,review,runs,export}, emitters/, extractors/, templates/report/
 schemas/       *.schema.json
@@ -263,4 +263,20 @@ testing/       sample-app/ and other test targets used during development
 docs/          ARCHITECTURE.md
 ```
 
-Agent content stays host-neutral; `/tessa-init` writes it in the format of the host (VS Code agent mode or Claude Code).
+Agent content stays host-neutral; `write_host_files` (run by `/tessa-init`) writes it in the
+format of the host. Every generated file carries a `tessa-generated` marker; only marked files
+are replaced or removed, and JSON configs gain only Tessa's own entry.
+
+| Neutral                         | Claude Code                                                                                            | VS Code agent mode                                                   |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| Agent                           | `.claude/agents/<name>.md` (subagent)                                                                  | `.github/agents/<name>.agent.md` (custom agent)                      |
+| Delegating agent (orchestrator) | `.claude/skills/<name>/SKILL.md`, followed by the main conversation (subagents cannot start subagents) | Custom agent with `agent` tool and `agents:` list; prompts run in it |
+| Command                         | `.claude/commands/<name>.md`                                                                           | `.github/prompts/<name>.prompt.md`                                   |
+| Skill                           | `.claude/skills/<name>/SKILL.md`                                                                       | `.github/skills/<name>/SKILL.md`                                     |
+| `tessa-mcp/<t>`                 | `mcp__tessa-mcp__<t>`                                                                                  | `tessa-mcp/<t>`                                                      |
+| `read`, `search`                | `Read`; `Grep`, `Glob`                                                                                 | `read`; `search`                                                     |
+| `browser`                       | Playwright MCP server named `playwright`                                                               | Integrated browser tool set `browser`                                |
+| MCP server                      | `.mcp.json` → `npx -y tessa-qa@<version> mcp`                                                          | `.vscode/mcp.json` → same, with `--workspace`                        |
+
+Commands never pre-approve `apply_handoff`, `init_workspace` or `reset_db` in Claude Code, so
+the host still asks before each call.

@@ -33,7 +33,7 @@ results) and the target framework.
    repeated) until they press Export. If they paste a selection from a report opened from
    disk, save it with `record_selection` when they ask.
 2. **Export.** Hand the run to the `tessa-exporter` agent. If your host cannot run subagents,
-   follow `agents/exporter.md` yourself with the `export-conventions` skill. The user may be
+   follow the `tessa-exporter` agent's instructions yourself with the `export-conventions` skill. The user may be
    asked to sign in, in a separate browser window, once per persona.
 3. **Gate: move into the repo.** Show the user the summary, the validation result, and the
    handoff diff. Ask: "Move these tests into `<test_dir>`?" Call `apply_handoff` with the

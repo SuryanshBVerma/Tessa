@@ -51,7 +51,11 @@ export interface ModelChoice {
  * host decides whether it understands it. VS Code names models by their picker labels, which
  * differ per account and change often, so `auto` there inherits the user's chosen model.
  */
-export function resolveModel(config: ResolvedConfig, role: Role, host: Host): ModelChoice {
+export function resolveModel(
+  config: Pick<ResolvedConfig, 'models'>,
+  role: Role,
+  host: Host,
+): ModelChoice {
   const configured = config.models[role];
   if (configured !== 'auto') {
     return { role, model: configured, source: 'config', label: configured };
@@ -64,7 +68,7 @@ export function resolveModel(config: ResolvedConfig, role: Role, host: Host): Mo
   return { role, model: null, source: 'auto', label: `host default (auto: ${tier})` };
 }
 
-export function resolveModels(config: ResolvedConfig, host: Host): ModelChoice[] {
+export function resolveModels(config: Pick<ResolvedConfig, 'models'>, host: Host): ModelChoice[] {
   return ROLES.map((role) => resolveModel(config, role, host));
 }
 
