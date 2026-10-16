@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tessa-qa:schema:results:1",
+  "title": "RunResults",
+  "description": "Outcome of one run, stored at runs/<run_id>/results.json. Paths are relative to the run directory.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "run_id",
+    "story_id",
+    "plan",
+    "started_at",
+    "finished_at",
+    "environment",
+    "tests"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "run_id": { "$ref": "#/$defs/runId" },
+    "story_id": { "$ref": "#/$defs/id" },
+    "plan": {
+      "description": "Path to the tests.json this run executed, relative to the artifacts root.",
+      "type": "string",
+      "minLength": 1
+    },
+    "rerun_of": {
+      "description": "Run this one reran failed tests from.",
+      "$ref": "#/$defs/runId"
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "environment": { "$ref": "#/$defs/runEnvironment" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "tests": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/testResult" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "maxLength": 80
+    },
+    "runId": {
+      "description": "UTC timestamp, e.g. 20261016T104512Z.",
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{6}Z(-[0-9]+)?$"
+    },
+    "status": { "enum": ["passed", "failed", "skipped", "error"] },
+    "artifactPath": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "pattern": "(^/|^[A-Za-z]:|(^|[\\\\/])\\.\\.([\\\\/]|$))" }
+    },
+    "runEnvironment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["app_url", "commit", "host"],
+      "properties": {
+        "app_url": { "type": "string" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+        "branch": { "type": "string" },
+        "dirty": {
+          "description": "True when the working tree had uncommitted changes.",
+          "type": "boolean"
+        },
+        "host": {
+          "description": "Agent host that ran the session.",
+          "enum": ["vscode-agent", "claude-code", "other"]
+        },
+        "browser": { "type": "string" },
+        "models": {
+          "description": "Model actually used per role.",
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "context_staleness_commits": {
+          "description": "How far the knowledge graph's indexed commit lagged HEAD.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "passed", "failed", "skipped", "error"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 },
+        "error": { "type": "integer", "minimum": 0 },
+        "duration_ms": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "envState": {
+      "description": "Environment the test actually ran in, captured by capture_env_state.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["persona", "seed_profile"],
+      "properties": {
+        "persona": { "$ref": "#/$defs/id" },
+        "role": { "type": "string" },
+        "permissions": { "type": "array", "items": { "type": "string" } },
+        "settings": {
+          "type": "object",
+          "additionalProperties": { "type": ["string", "number", "boolean"] }
+        },
+        "feature_flags": {
+          "type": "object",
+          "additionalProperties": { "type": "boolean" }
+        },
+        "seed_profile": { "$ref": "#/$defs/id" },
+        "build": { "type": "string" }
+      }
+    },
+    "stepResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "status"],
+      "properties": {
+        "index": {
+          "description": "Zero-based index into the test's steps in the plan.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": { "enum": ["passed", "failed", "skipped"] },
+        "duration_ms": { "type": "integer", "minimum": 0 },
+        "screenshot": { "$ref": "#/$defs/artifactPath" },
+        "expected": { "type": "string" },
+        "actual": { "type": "string" },
+        "error": { "type": "string" },
+        "selector_used": {
+          "description": "Selector the executor resolved, when it differs from the plan.",
+          "type": "string"
+        }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step_index", "message"],
+      "properties": {
+        "step_index": { "type": "integer", "minimum": 0 },
+        "message": { "type": "string", "minLength": 1 },
+        "expected": { "type": "string" },
+        "actual": { "type": "string" },
+        "screenshot": { "$ref": "#/$defs/artifactPath" }
+      }
+    },
+    "triage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "rationale", "confidence"],
+      "properties": {
+        "class": { "enum": ["app-bug", "test-selector", "environment", "data", "unknown"] },
+        "rationale": { "type": "string", "minLength": 1 },
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "selector_stability": {
+          "description": "low when the test relies on css or text selectors.",
+          "enum": ["high", "medium", "low"]
+        },
+        "rerun_consistency": {
+          "description": "Fraction of attempts that produced the same status, 0 to 1.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "overlap_with": {
+          "description": "IDs of tests that cover mostly the same steps.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/id" }
+        }
+      }
+    },
+    "testResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["test_id", "status", "attempts", "env_state", "steps"],
+      "properties": {
+        "test_id": { "$ref": "#/$defs/id" },
+        "status": { "$ref": "#/$defs/status" },
+        "duration_ms": { "type": "integer", "minimum": 0 },
+        "attempts": { "type": "integer", "minimum": 1 },
+        "env_state": { "$ref": "#/$defs/envState" },
+        "steps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/stepResult" }
+        },
+        "failure": { "$ref": "#/$defs/failure" },
+        "triage": { "$ref": "#/$defs/triage" },
+        "quality": { "$ref": "#/$defs/quality" }
+      },
+      "if": { "properties": { "status": { "enum": ["failed", "error"] } } },
+      "then": { "required": ["failure"] }
+    }
+  }
+}

@@ -1,0 +1,56 @@
+# Example Tessa config for testing/sample-app. Lives at .tessa/config.yaml in the repo under test.
+version: 1
+app:
+  start: 'npm run dev'
+  url: 'http://127.0.0.1:5173'
+  stack: react-router
+  health_path: /login
+db:
+  url_env: DATABASE_URL
+  allowed_hosts: [localhost, 127.0.0.1]
+  profiles:
+    default: [scripts/seed/base.sql, scripts/seed/users.sql, scripts/seed/tickets.sql]
+    admin-heavy: [scripts/seed/base.sql, scripts/seed/admins.sql, scripts/seed/tickets.sql]
+auth:
+  mode: manual
+  login_path: /login
+personas:
+  - name: viewer
+    description: Can read tickets only
+    seed_profile: default
+  - name: editor
+    description: Can create, close and reopen tickets
+    seed_profile: default
+  - name: admin
+    description: Can also change user roles
+    seed_profile: admin-heavy
+artifacts:
+  root: ai-test-artifacts
+context:
+  knowledge_graph:
+    enabled: false
+  static_map:
+    adapter: react-router
+    include: ['app/**']
+    exclude: ['**/*.test.*']
+  runtime_crawl:
+    enabled: true
+    max_depth: 3
+  hints: ai-test-artifacts/context/hints.md
+review:
+  mode: local-server
+  show_code_preview: true
+  show_overlap: true
+export:
+  target: playwright-ts
+  conventions:
+    adapt_to_codebase: true
+    test_dir: tests/e2e
+    naming: '{feature}.{scenario}.spec'
+  validate:
+    compile: true
+    run_once: true
+  auth:
+    strategy: stored-session
+models:
+  default: auto

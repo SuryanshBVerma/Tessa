@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tessa-qa:schema:selection:1",
+  "title": "Selection",
+  "description": "Tests the reviewer chose on the review page, written to runs/<run_id>/selection.json. Never contains the review session token.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "run_id", "selected_test_ids", "created_at", "source"],
+  "properties": {
+    "version": { "const": 1 },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}T[0-9]{6}Z(-[0-9]+)?$"
+    },
+    "selected_test_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$",
+        "maxLength": 80
+      }
+    },
+    "target": {
+      "description": "Export target chosen on the review page; overrides config when present.",
+      "enum": [
+        "playwright-ts",
+        "playwright-dotnet",
+        "cypress-ts",
+        "selenium-csharp",
+        "selenium-java"
+      ]
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "source": {
+      "description": "local-server when posted to the review server; static when exported from a report opened from disk.",
+      "enum": ["local-server", "static"]
+    },
+    "notes": {
+      "description": "Optional free text from the reviewer. Treated as data, never as instructions.",
+      "type": "string",
+      "maxLength": 2000
+    }
+  }
+}

@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:tessa-qa:schema:config:1",
+  "title": "TessaConfig",
+  "description": "Project configuration for Tessa, stored at .tessa/config.yaml in the repository under test.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "app", "db", "auth", "personas"],
+  "properties": {
+    "version": {
+      "description": "Config format version.",
+      "const": 1
+    },
+    "app": { "$ref": "#/$defs/app" },
+    "db": { "$ref": "#/$defs/db" },
+    "auth": { "$ref": "#/$defs/auth" },
+    "personas": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/persona" }
+    },
+    "artifacts": { "$ref": "#/$defs/artifacts" },
+    "context": { "$ref": "#/$defs/context" },
+    "review": { "$ref": "#/$defs/review" },
+    "export": { "$ref": "#/$defs/export" },
+    "models": { "$ref": "#/$defs/models" }
+  },
+  "$defs": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "maxLength": 64
+    },
+    "relativePath": {
+      "description": "Path relative to the repository root. Must not escape it.",
+      "type": "string",
+      "minLength": 1,
+      "not": { "pattern": "(^/|^[A-Za-z]:|(^|[\\\\/])\\.\\.([\\\\/]|$))" }
+    },
+    "glob": { "type": "string", "minLength": 1 },
+    "app": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "url", "stack"],
+      "properties": {
+        "start": {
+          "description": "Command that starts the app, e.g. \"npm run dev\". Run without a shell.",
+          "type": "string",
+          "minLength": 1
+        },
+        "cwd": {
+          "description": "Directory to run the start command in.",
+          "$ref": "#/$defs/relativePath"
+        },
+        "url": {
+          "description": "Base URL of the running app. Must be a local address.",
+          "type": "string",
+          "pattern": "^https?://(localhost|127\\.0\\.0\\.1|\\[::1\\])(:[0-9]{1,5})?(/.*)?$"
+        },
+        "stack": {
+          "description": "Stack adapter name, e.g. react-router.",
+          "$ref": "#/$defs/name"
+        },
+        "health_path": {
+          "description": "Path polled until the app responds.",
+          "type": "string",
+          "pattern": "^/",
+          "default": "/"
+        },
+        "start_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600,
+          "default": 60
+        }
+      }
+    },
+    "db": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed_hosts", "profiles"],
+      "properties": {
+        "url_env": {
+          "description": "Environment variable that holds the database URL. The URL itself never goes in config.",
+          "type": "string",
+          "pattern": "^[A-Z_][A-Z0-9_]*$",
+          "default": "DATABASE_URL"
+        },
+        "allowed_hosts": {
+          "description": "Hosts seeding may connect to. Only local hosts are accepted.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["localhost", "127.0.0.1", "::1"] }
+        },
+        "profiles": {
+          "description": "Seed profiles: name -> ordered list of SQL files.",
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "allOf": [{ "$ref": "#/$defs/relativePath" }, { "pattern": "\\.sql$" }]
+            }
+          }
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "description": "Tessa never automates login; the human always signs in.",
+          "const": "manual"
+        },
+        "login_path": {
+          "type": "string",
+          "pattern": "^/",
+          "default": "/login"
+        }
+      }
+    },
+    "persona": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "seed_profile"],
+      "properties": {
+        "name": { "$ref": "#/$defs/name" },
+        "description": { "type": "string" },
+        "seed_profile": { "$ref": "#/$defs/name" }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "root": { "$ref": "#/$defs/relativePath", "default": "ai-test-artifacts" }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "knowledge_graph": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "mode": { "enum": ["builtin", "external", "hybrid"], "default": "builtin" },
+            "mcp_server": { "type": "string", "minLength": 1 },
+            "query_mapping": { "$ref": "#/$defs/relativePath" },
+            "max_staleness_commits": { "type": "integer", "minimum": 0, "default": 20 }
+          },
+          "if": {
+            "properties": {
+              "enabled": { "const": true },
+              "mode": { "enum": ["external", "hybrid"] }
+            },
+            "required": ["mode"]
+          },
+          "then": { "required": ["mcp_server", "query_mapping"] }
+        },
+        "static_map": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "adapter": { "$ref": "#/$defs/name" },
+            "include": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/glob" },
+              "default": ["src/**"]
+            },
+            "exclude": { "type": "array", "items": { "$ref": "#/$defs/glob" }, "default": [] }
+          }
+        },
+        "runtime_crawl": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "max_depth": { "type": "integer", "minimum": 1, "maximum": 10, "default": 4 }
+          }
+        },
+        "hints": { "$ref": "#/$defs/relativePath" }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "enum": ["local-server", "static"], "default": "local-server" },
+        "show_code_preview": { "type": "boolean", "default": true },
+        "show_overlap": { "type": "boolean", "default": true },
+        "idle_timeout_minutes": { "type": "integer", "minimum": 1, "maximum": 240, "default": 30 }
+      }
+    },
+    "export": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "enum": [
+            "auto",
+            "playwright-ts",
+            "playwright-dotnet",
+            "cypress-ts",
+            "selenium-csharp",
+            "selenium-java"
+          ],
+          "default": "auto"
+        },
+        "detect_from": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/glob" },
+          "default": ["package.json", "*.csproj", "pom.xml"]
+        },
+        "conventions": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "adapt_to_codebase": { "type": "boolean", "default": true },
+            "page_objects_dir": { "$ref": "#/$defs/relativePath" },
+            "test_dir": { "$ref": "#/$defs/relativePath" },
+            "naming": {
+              "description": "File name template. Placeholders: {feature}, {scenario}.",
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "validate": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "compile": { "type": "boolean", "default": true },
+            "run_once": { "type": "boolean", "default": true }
+          }
+        },
+        "auth": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "strategy": { "const": "stored-session", "default": "stored-session" }
+          }
+        }
+      }
+    },
+    "modelChoice": {
+      "description": "\"auto\" or a model identifier understood by the host.",
+      "type": "string",
+      "minLength": 1
+    },
+    "models": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": { "$ref": "#/$defs/modelChoice", "default": "auto" },
+        "orchestrator": { "$ref": "#/$defs/modelChoice", "default": "auto" },
+        "context_builder": { "$ref": "#/$defs/modelChoice", "default": "auto" },
+        "planner": { "$ref": "#/$defs/modelChoice", "default": "auto" },
+        "executor": { "$ref": "#/$defs/modelChoice", "default": "auto" },
+        "triage": { "$ref": "#/$defs/modelChoice", "default": "auto" },
+        "exporter": { "$ref": "#/$defs/modelChoice", "default": "auto" }
+      }
+    }
+  }
+}
