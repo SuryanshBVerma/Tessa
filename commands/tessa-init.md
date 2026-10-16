@@ -6,6 +6,7 @@ tools:
     tessa-mcp/init_workspace,
     tessa-mcp/validate_config,
     tessa-mcp/load_config,
+    tessa-mcp/write_host_files,
   ]
 ---
 
@@ -55,6 +56,18 @@ Call `validate_config` and report the result:
 - No errors: say Tessa is ready and suggest `/tessa-test-story` next.
 - Errors or warnings: list each with its path and a one-line fix. Do not edit the config
   yourself; the user decides how to fix it.
+
+## 5. Host files
+
+Tessa's agents, commands and skills are written in the format of the host you are running in
+(`claude-code` or `vscode-agent`), with the models from the config's `models` section.
+
+1. Call `write_host_files` with that host and `dry_run: true`, and show the user the files and
+   the model per role.
+2. If any file is a `conflict`, show its reason. Pass `overwrite: true` only if the user asks.
+3. After the user confirms, call it again without `dry_run`, and pass on its `next_steps`.
+
+Run this step again whenever the `models` section changes, or after upgrading Tessa.
 
 Remind the user to commit `.tessa/config.yaml` and the hints file, and that run output under
 the artifacts root is gitignored because it can contain screenshots and session state.

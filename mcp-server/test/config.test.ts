@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
 import { DEFAULTS, detectStack, loadConfig } from '../src/config/index.js';
 import { loadSchema, SCHEMAS_DIR } from '../src/schemas/index.js';
+import { appUrl } from '../src/util/app-url.js';
 import { PathEscapeError, resolveInside } from '../src/util/paths.js';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -83,6 +84,17 @@ describe('loadConfig', () => {
   it('refuses a config path outside the workspace', () => {
     const result = loadConfig({ workspace: workspace(), file: '../elsewhere/config.yaml' });
     expect(messages(result)[0]).toMatch(/outside the workspace/);
+  });
+
+  it('never quotes file content in YAML errors, and reads only .yaml files', () => {
+    const secret = 'DATABASE_URL=postgres://u:hunter2@localhost/app';
+    const dir = workspace({ 'notes.yaml': `a: [\n${secret}\n`, '.env': secret });
+    const broken = loadConfig({ workspace: dir, file: 'notes.yaml' });
+    expect(JSON.stringify(broken)).not.toContain('hunter2');
+    expect(messages(broken)[0]).toMatch(/YAML: .* at line \d+, column \d+/);
+    const env = loadConfig({ workspace: dir, file: '.env' });
+    expect(messages(env)[0]).toMatch(/must be a \.yaml or \.yml file/);
+    expect(JSON.stringify(env)).not.toContain('hunter2');
   });
 
   it('rejects duplicate YAML keys', () => {
@@ -241,6 +253,39 @@ describe('detectStack', () => {
   });
 });
 
+describe('app paths', () => {
+  const base = 'http://127.0.0.1:5173';
+  it('joins paths to the app and refuses any other origin', () => {
+    expect(appUrl(base, '/login')).toBe('http://127.0.0.1:5173/login');
+    expect(appUrl(base, '/health?x=//y')).toBe('http://127.0.0.1:5173/health?x=//y');
+    for (const path of ['//evil.example/login', `/${String.fromCharCode(92)}evil.example/x`]) {
+      expect(() => appUrl(base, path)).toThrow(/points away from the app/);
+    }
+  });
+
+  it('rejects protocol-relative health and login paths in config', () => {
+    const dir = workspace({
+      ...SEEDS,
+      '.tessa/config.yaml': stringify({
+        version: 1,
+        app: {
+          start: 'npm run dev',
+          url: base,
+          stack: 'react-router',
+          health_path: '//evil.example',
+        },
+        db: { allowed_hosts: ['127.0.0.1'], profiles: { default: ['scripts/seed/base.sql'] } },
+        auth: { mode: 'manual', login_path: '//evil.example/login' },
+        personas: [{ name: 'viewer', seed_profile: 'default' }],
+      }),
+    });
+    const loaded = loadConfig({ workspace: dir });
+    expect(loaded.ok).toBe(false);
+    const paths = loaded.ok ? [] : loaded.issues.map((i) => i.path);
+    expect(paths).toEqual(expect.arrayContaining(['/app/health_path', '/auth/login_path']));
+  });
+});
+
 describe('resolveInside', () => {
   it('resolves paths inside the workspace', () => {
     const dir = workspace();
@@ -255,4 +300,22 @@ describe('resolveInside', () => {
       expect(() => resolveInside(dir, path)).toThrow(PathEscapeError);
     },
   );
+
+  it('refuses a new file under a folder that links out of the workspace', () => {
+    const dir = workspace();
+    const outside = workspace();
+    // A junction needs no special rights on Windows and is a plain symlink elsewhere.
+    symlinkSync(outside, join(dir, 'export'), 'junction');
+    expect(() => resolveInside(dir, 'export/story/new.spec.ts')).toThrow(PathEscapeError);
+    expect(() => resolveInside(dir, 'export')).toThrow(PathEscapeError);
+  });
+
+  it('refuses a path through a dangling link, and allows links that stay inside', () => {
+    const dir = workspace({ 'real/keep.txt': '' });
+    const outside = workspace();
+    symlinkSync(join(outside, 'not-yet'), join(dir, 'dangling'), 'junction');
+    expect(() => resolveInside(dir, 'dangling/x.txt')).toThrow(PathEscapeError);
+    symlinkSync(join(dir, 'real'), join(dir, 'alias'), 'junction');
+    expect(resolveInside(dir, 'alias/new.txt')).toBe(join(dir, 'alias', 'new.txt'));
+  });
 });

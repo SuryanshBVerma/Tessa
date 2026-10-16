@@ -63,7 +63,10 @@ export async function connect(workspace: string): Promise<Client> {
 }
 
 export async function call(client: Client, name: string, args: Record<string, unknown> = {}) {
-  const response = await client.callTool({ name, arguments: args });
+  // start_app waits for the app to come up, which can pass the SDK's 60 s default on a busy machine.
+  const response = await client.callTool({ name, arguments: args }, undefined, {
+    timeout: 115_000,
+  });
   return {
     isError: response.isError === true,
     data: response.structuredContent as Record<string, any>,

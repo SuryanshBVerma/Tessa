@@ -29,8 +29,9 @@ browser, exactly as a careful manual tester would, and record what happened. Fol
 
 ## What you do
 
-1. Call `begin_run` with the story, the test ids and `rerun_of` if given, and the host you are
-   running in (`vscode-agent` or `claude-code`).
+1. Call `begin_run` with the story, the test ids and `rerun_of` if given, the host you are
+   running in (`vscode-agent` or `claude-code`), and `models: { executor: "<your model>" }` if
+   you know which model you are. The report records it.
 2. Run the tests as the `browser-execution` skill describes: group by persona, pause for the
    user to sign in, capture environment state, seed before each test, run and record each step
    with a screenshot.

@@ -5,6 +5,14 @@
 /docs/DECISIONS.md
 
 # Dependencies and build output
+# Copied into the package by mcp-server/scripts/pack-assets.ts during npm pack
+/mcp-server/init-templates/
+/mcp-server/schemas/
+/mcp-server/agents/
+/mcp-server/commands/
+/mcp-server/skills/
+/mcp-server/LICENSE
+*.tgz
 node_modules/
 dist/
 coverage/
@@ -23,3 +31,4 @@ ai-test-artifacts/.session/
 # React Router generated output
 .react-router/
 build/
+/.pack-test/

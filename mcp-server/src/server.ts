@@ -20,6 +20,10 @@ import { UnsafeDatabaseError } from './db/guard.js';
 import { emitTests, ExportError, updateExportFile } from './export/export.js';
 import { applyHandoff, proposeHandoff } from './export/handoff.js';
 import { SessionCapture, validateExport } from './export/validate.js';
+import { modelsForRun, resolveModels, ROLES, workspaceModels } from './hosts/models.js';
+import { renderHost } from './hosts/render.js';
+import { loadSources } from './hosts/sources.js';
+import { writeHostFiles } from './hosts/write.js';
 import { SeedError, seedProfile, type SeedResult } from './db/seed.js';
 import { detectStack, loadConfig, type ConfigIssue, type ResolvedConfig } from './config/index.js';
 import { initWorkspace } from './init/index.js';
@@ -44,7 +48,7 @@ import {
   resolveCompleteRun,
 } from './runs/history.js';
 import { buildResults } from './runs/results.js';
-import { importScreenshot } from './runs/screenshots.js';
+import { importScreenshot, MAX_BASE64_CHARS } from './runs/screenshots.js';
 import {
   artifactsDir,
   createRun,
@@ -246,7 +250,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         overwrite: z.boolean().optional(),
         dry_run: z.boolean().optional(),
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     },
     (args) => {
       try {
@@ -254,6 +258,59 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         const options = JSON.parse(JSON.stringify(args)) as Parameters<typeof initWorkspace>[1];
         const initialised = initWorkspace(workspace, options);
         return result(initialised, !initialised.ok);
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'write_host_files',
+    {
+      title: 'Write host files',
+      description:
+        "Write Tessa's agents, commands, skills and MCP server entry in the format of a host: Claude Code (.claude/, .mcp.json) or VS Code agent mode (.github/agents, .github/prompts, .github/skills, .vscode/mcp.json). Models come from the models section of .tessa/config.yaml (auto when there is no config). Replaces only files Tessa generated; reports any other file in the way as a conflict. Preview with dry_run first.",
+      inputSchema: {
+        host: z.enum(['claude-code', 'vscode-agent']),
+        dry_run: z.boolean().optional(),
+        overwrite: z
+          .boolean()
+          .optional()
+          .describe(
+            'Replace files at those paths that Tessa did not write. Only when the user asks.',
+          ),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ host, dry_run, overwrite }) => {
+      try {
+        const { config, fromConfig } = workspaceModels(workspace);
+        const files = renderHost(host, loadSources(), config);
+        const outcomes = writeHostFiles(workspace, host, files, {
+          ...(dry_run === undefined ? {} : { dryRun: dry_run }),
+          ...(overwrite === undefined ? {} : { overwrite }),
+        });
+        return result({
+          ok: !outcomes.some((o) => o.status === 'conflict'),
+          host,
+          dry_run: dry_run === true,
+          config_used: fromConfig,
+          models: resolveModels(config, host).map((c) => ({ role: c.role, model: c.label })),
+          files: outcomes,
+          next_steps:
+            host === 'claude-code'
+              ? [
+                  'Restart Claude Code (or run /mcp) so it starts tessa-mcp from .mcp.json, and approve the server when asked.',
+                  'The executor drives the browser through a Playwright MCP server named "playwright"; add one if this project has none.',
+                  'Commit the generated files so the team shares them.',
+                ]
+              : [
+                  'Reload VS Code so it starts tessa-mcp from .vscode/mcp.json, and trust the server when asked.',
+                  'The executor uses the integrated browser tools (workbench.browser.enableChatTools).',
+                  'Run /tessa-test-story from the chat, or pick the tessa-orchestrator agent.',
+                  'Commit the generated files so the team shares them.',
+                ],
+        });
       } catch (error) {
         return failure(error);
       }
@@ -418,7 +475,11 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           const state = loadRun(ctx, run_id);
           state.env_states[persona] = captured.capture.env_state;
           const { host: capturedHost, ...environment } = captured.capture.environment;
-          state.environment = environment;
+          // Keep what begin_run recorded that the capture does not know, such as models.
+          state.environment = {
+            ...environment,
+            ...(state.environment.models === undefined ? {} : { models: state.environment.models }),
+          };
           if (capturedHost !== undefined) {
             state.host = capturedHost;
           }
@@ -451,10 +512,16 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           .optional()
           .describe('A completed run of the same story whose failed tests to rerun.'),
         host: hostEnum.optional().describe('The agent host running this session.'),
+        models: z
+          .partialRecord(z.enum(ROLES), z.string().max(120))
+          .optional()
+          .describe(
+            'Models you know were used, by role (e.g. your own model as executor). Others are taken from config.',
+          ),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
-    async ({ story, test_ids, rerun_of, host }) => {
+    async ({ story, test_ids, rerun_of, host, models }) => {
       try {
         const config = requireConfig();
         const ctx = { config, workspace };
@@ -484,7 +551,11 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         const { state, tests } = createRun(
           ctx,
           plan,
-          { app_url: config.app.url, ...(git ?? {}) },
+          {
+            app_url: config.app.url,
+            ...(git ?? {}),
+            models: modelsForRun(config, host ?? 'other', models ?? {}),
+          },
           {
             ...(ids === undefined ? {} : { testIds: ids }),
             ...(host === undefined ? {} : { host }),
@@ -530,7 +601,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         screenshot: z
           .union([
             z.object({ path: z.string().min(1) }),
-            z.object({ data_base64: z.string().min(1) }),
+            z.object({ data_base64: z.string().min(1).max(MAX_BASE64_CHARS) }),
           ])
           .optional(),
       },
@@ -1417,7 +1488,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         run_once: z.boolean().optional().describe('Defaults to export.validate.run_once.'),
         browser_channel: channelArg,
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     },
     async ({ story, target, run_once, browser_channel }) => {
       try {
@@ -1450,7 +1521,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           .describe('How long to wait this call; default 50.'),
         browser_channel: channelArg,
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
     async ({ persona, wait_seconds, browser_channel }) => {
       try {
@@ -1499,7 +1570,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         target: z.enum(['playwright-ts', 'playwright-dotnet']),
         proposal_id: z.string().regex(/^[0-9a-f]{16}$/),
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     },
     ({ story, target, proposal_id }) => {
       try {

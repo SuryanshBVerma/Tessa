@@ -1,4 +1,5 @@
 import { execFile, execFileSync, spawn, type ChildProcess } from 'node:child_process';
+import { appUrl } from '../util/app-url.js';
 import { existsSync, statSync } from 'node:fs';
 import type { ResolvedConfig } from '../config/index.js';
 import { resolveInside } from '../util/paths.js';
@@ -20,7 +21,7 @@ export interface HealthResult {
 }
 
 export async function checkHealth(config: ResolvedConfig): Promise<HealthResult> {
-  const url = new URL(config.app.health_path, config.app.url).toString();
+  const url = appUrl(config.app.url, config.app.health_path);
   const started = performance.now();
   try {
     // Redirects are not followed: a 302 to /login still means the app is up.

@@ -146,6 +146,13 @@
     ]) {
       if (bit) meta.append(el('span', { text: bit }));
     }
+    if (env.models && Object.keys(env.models).length) {
+      const models = document.getElementById('run-models');
+      models.textContent = `Models: ${Object.entries(env.models)
+        .map(([role, model]) => `${role.replace('_', ' ')} ${model}`)
+        .join(' · ')}`;
+      models.hidden = false;
+    }
     const stats = document.getElementById('stats');
     const s = results.summary;
     stats.append(

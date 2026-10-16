@@ -1,13 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { parseDocument } from 'yaml';
+import { assetDir } from '../assets.js';
 import { checkSemantics, DEFAULT_CONFIG_PATH, type ConfigIssue } from '../config/load.js';
 import { detectStack, type ExportTarget, type StackReport } from '../config/stacks.js';
 import { validate } from '../schemas/index.js';
 import { resolveInside } from '../util/paths.js';
 
-// Same relative depth from src/init and dist/init: <repo>/templates.
-export const TEMPLATES_DIR = new URL('../../../templates/', import.meta.url);
+export const TEMPLATES_DIR = assetDir('templates');
 
 const GITIGNORE_START = '# >>> tessa';
 const GITIGNORE_END = '# <<< tessa';

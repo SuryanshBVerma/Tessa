@@ -40,8 +40,15 @@ export interface Manifest {
   files: ManifestFile[];
 }
 
-const HANDOFF = /\.(spec|test)\.(ts|js)$|Tests\.cs$/;
-const EDITABLE = /\.(ts|js|cs|md|json|csproj)$/;
+export const HANDOFF = /\.(spec|test)\.(ts|js)$|Tests\.cs$/;
+const EDITABLE = /\.(ts|js|cs|md|json)$/;
+/**
+ * Files the build or test runner executes or obeys (project files, runner config, compiler and
+ * package settings). The emitter owns them; letting an agent edit them would let it run commands
+ * through validate_export without the host asking.
+ */
+const PROTECTED =
+  /(^|\/)(playwright\.config\.[cm]?[jt]s|tsconfig[^/]*\.json|package(-lock)?\.json|global\.json|nuget\.config|Directory\.Build\.[^/]+|[^/]+\.(csproj|props|targets|sln|runsettings))$/i;
 const MAX_FILE_BYTES = 512 * 1024;
 
 export function sha256(text: string): string {
@@ -177,8 +184,13 @@ export function updateExportFile(
   path: string,
   content: string,
 ) {
-  if (!EDITABLE.test(path))
-    throw new ExportError('only .ts, .js, .cs, .md, .json and .csproj files can be edited');
+  const normalized = posix.normalize(path.replaceAll('\\', '/'));
+  if (PROTECTED.test(normalized))
+    throw new ExportError(
+      `${normalized} is a project or runner file Tessa generates; it cannot be edited`,
+    );
+  if (!EDITABLE.test(normalized))
+    throw new ExportError('only .ts, .js, .cs, .md and .json files can be edited');
   if (Buffer.byteLength(content, 'utf8') > MAX_FILE_BYTES)
     throw new ExportError('file is larger than 512 KB');
   const manifest = readManifest(ctx, target, story);

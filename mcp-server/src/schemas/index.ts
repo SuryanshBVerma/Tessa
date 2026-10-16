@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Ajv2020, type ErrorObject, type ValidateFunction } from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
+import { assetDir } from '../assets.js';
 import type { RunDiff, RunResults, Selection, TessaConfig, TestPlan } from './generated/index.js';
 
 export type { RunDiff, RunResults, Selection, TessaConfig, TestPlan };
@@ -16,8 +17,7 @@ interface SchemaTypes {
   'run-diff': RunDiff;
 }
 
-// Same relative depth from src/schemas and dist/schemas: <repo>/schemas.
-export const SCHEMAS_DIR = new URL('../../../schemas/', import.meta.url);
+export const SCHEMAS_DIR = assetDir('schemas');
 
 export function schemaUrl(name: SchemaName): URL {
   return new URL(`${name}.schema.json`, SCHEMAS_DIR);

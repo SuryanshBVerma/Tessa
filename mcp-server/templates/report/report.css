@@ -130,6 +130,16 @@ button {
   font-size: 13px;
 }
 
+.run-models {
+  margin-top: var(--space-1);
+  color: var(--fg-subtle);
+  font-size: 12px;
+}
+
+.run-models[hidden] {
+  display: none;
+}
+
 .run-meta span + span::before {
   content: '·';
   margin: 0 var(--space-2);
