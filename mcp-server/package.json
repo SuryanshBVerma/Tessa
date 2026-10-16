@@ -1,6 +1,6 @@
 {
   "name": "tessa-qa",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Agentic tester for VS Code agent mode and Claude Code: plans tests from a user story, runs them in the browser with you, reports, and exports the ones you keep to Playwright.",
   "license": "MIT",
   "type": "module",

@@ -3,7 +3,7 @@ name: failure-triage
 description: How Tessa classifies a failed, errored or flaky test as an app bug, a test or selector problem, an environment problem, or a data problem - the evidence each class needs, the order to check it in, and how to record the finding with tessa-mcp. Use after a run or a run diff has failures.
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.8.0 from skills/failure-triage/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.0 from skills/failure-triage/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # Failure triage
 

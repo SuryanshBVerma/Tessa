@@ -3,7 +3,7 @@ name: export-conventions
 description: How Tessa's exporter adapts generated tests to a repository's own conventions - finding existing tests, page objects, fixtures and naming, deciding what to change, and editing only through update_export_file. Use after emit_tests, before validate_export.
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.8.0 from skills/export-conventions/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.0 from skills/export-conventions/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # Export conventions
 

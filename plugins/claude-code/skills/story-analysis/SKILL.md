@@ -3,7 +3,7 @@ name: story-analysis
 description: How Tessa reads a user story before planning tests - pull out the acceptance criteria, personas, the behaviour each criterion implies, edge cases and implicit requirements, and note what is ambiguous. Use at the start of planning, before writing any test.
 ---
 
-<!-- tessa-generated: written by tessa-qa 0.8.0 from skills/story-analysis/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
+<!-- tessa-generated: written by tessa-qa 0.9.0 from skills/story-analysis/SKILL.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
 
 # Story analysis
 
