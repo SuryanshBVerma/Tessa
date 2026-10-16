@@ -50,7 +50,7 @@ Stack adapters are the main extension point: an adapter skill plus an extractor 
 
 | Group              | Tools                                                                                                                                                                |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Config             | `load_config`, `validate_config`, `detect_stack`                                                                                                                     |
+| Config             | `load_config`, `validate_config`, `detect_stack`, `init_workspace`                                                                                                   |
 | App lifecycle      | `start_app`, `stop_app`, `health_check`                                                                                                                              |
 | Database           | `seed_db(profile)`, `reset_db` — allowlisted scripts only, local hosts only                                                                                          |
 | Context            | `build_static_map`, `context_freshness`, `routes_for_feature`, `components_for_route`, `permissions_for_route`, `api_calls_for_component`, `selectors_for_component` |
