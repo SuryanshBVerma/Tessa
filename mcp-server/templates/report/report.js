@@ -7,8 +7,19 @@
   const results = data.results;
   const planById = new Map(data.tests.map((t) => [t.id, t]));
   const selected = new Set();
+  const filters = { status: '', persona: '' };
   // Served by tessa-mcp at http://127.0.0.1:<port>/<token>/; opened from disk otherwise.
   const served = location.protocol === 'http:' && location.hostname === '127.0.0.1';
+
+  // Failures first, so the reviewer sees what needs attention without scrolling.
+  const STATUS_ORDER = { failed: 0, error: 1, passed: 2, skipped: 3 };
+  const STATUS_LABEL = { failed: 'Failed', error: 'Error', passed: 'Passed', skipped: 'Skipped' };
+  const tests = results.tests
+    .filter((t) => planById.has(t.test_id))
+    .map((t, i) => ({ result: t, plan: planById.get(t.test_id), order: i }))
+    .sort(
+      (a, b) => STATUS_ORDER[a.result.status] - STATUS_ORDER[b.result.status] || a.order - b.order,
+    );
 
   function el(tag, attrs, children) {
     const node = document.createElement(tag);
@@ -19,9 +30,26 @@
       else node.setAttribute(key, value === true ? '' : String(value));
     }
     for (const child of children || []) {
-      if (child !== null && child !== undefined) node.append(child);
+      if (child !== null && child !== undefined && child !== false) node.append(child);
     }
     return node;
+  }
+
+  function chevron() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('class', 'chevron');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', 'M6 3.5 10.5 8 6 12.5');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'currentColor');
+    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    svg.append(path);
+    return svg;
   }
 
   // Screenshot paths come from results.json, which tessa-mcp wrote; still, only allow the
@@ -35,256 +63,336 @@
 
   function formatMs(ms) {
     if (typeof ms !== 'number') return '';
-    return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
+    if (ms < 1000) return `${ms} ms`;
+    if (ms < 60_000) return `${(ms / 1000).toFixed(1)} s`;
+    const minutes = Math.floor(ms / 60_000);
+    return `${minutes} min ${Math.round((ms % 60_000) / 1000)} s`;
   }
 
-  function describeTarget(step) {
-    const t = step.target;
-    if (!t) return '';
-    if (t.strategy === 'role') return `role=${t.role}${t.name ? ` "${t.name}"` : ''}`;
-    return `${t.strategy}="${t.value}"`;
+  function statusBadge(status) {
+    const known = STATUS_LABEL[status];
+    return el('span', {
+      className: `status status-${known ? status : 'not-run'}`,
+      text: known || 'Not run',
+    });
   }
 
   function describeStep(step) {
+    const t = step.target;
     const parts = [step.action];
-    const target = describeTarget(step);
-    if (target) parts.push(target);
-    if (step.value !== undefined) parts.push(`value "${step.value}"`);
-    if (step.value_env) parts.push(`value from $${step.value_env}`);
+    if (t) {
+      parts.push(
+        t.strategy === 'role'
+          ? `role=${t.role}${t.name ? ` "${t.name}"` : ''}`
+          : `${t.strategy}="${t.value}"`,
+      );
+    }
+    if (step.value !== undefined) parts.push(`"${step.value}"`);
+    if (step.value_env) parts.push(`$${step.value_env}`);
     if (step.assertion) {
       const a = step.assertion;
       parts.push(a.expected === undefined ? a.kind : `${a.kind} ${JSON.stringify(a.expected)}`);
     }
-    return parts.join(' · ');
+    return parts.join(' ');
   }
 
   function formatValue(value) {
-    if (Array.isArray(value)) return value.join(', ') || '—';
+    if (Array.isArray(value)) return value.length ? value.join(', ') : null;
     if (value && typeof value === 'object') {
       const entries = Object.entries(value);
-      return entries.length ? entries.map(([k, v]) => `${k}: ${v}`).join(', ') : '—';
+      return entries.length ? entries.map(([k, v]) => `${k}: ${v}`).join(', ') : null;
     }
-    return value === undefined || value === '' ? '—' : String(value);
+    return value === undefined || value === '' ? null : String(value);
   }
 
-  function header() {
-    document.getElementById('story-title').textContent = data.story.title;
-    const env = results.environment;
-    const bits = [
-      `Run ${results.run_id}`,
-      `story ${results.story_id}`,
-      env.branch ? `branch ${env.branch}` : null,
-      env.commit
-        ? `commit ${env.commit.slice(0, 7)}${env.dirty ? ' (uncommitted changes)' : ''}`
-        : null,
-      `host ${env.host}`,
-      `finished ${new Date(results.finished_at).toLocaleString()}`,
-    ].filter(Boolean);
-    document.getElementById('run-meta').textContent = bits.join(' · ');
-    const summary = document.getElementById('summary');
-    for (const key of ['total', 'passed', 'failed', 'error', 'skipped']) {
-      summary.append(
-        el('div', {}, [
-          el('dt', { text: key }),
-          el('dd', {
-            text: results.summary[key],
-            className: key === 'total' ? '' : `status-${key}`,
-          }),
-        ]),
-      );
-    }
-    document.getElementById('export-target').textContent = `Export target: ${data.options.target}`;
-  }
-
-  function envSection(envState) {
-    const rows = [
-      ['Persona', envState.persona],
-      ['Role', envState.role],
-      ['Permissions', envState.permissions],
-      ['Settings', envState.settings],
-      ['Feature flags', envState.feature_flags],
-      ['Seed profile', envState.seed_profile],
-      ['Build', envState.build],
-    ];
+  function facts(rows) {
+    const shown = rows
+      .map(([label, value]) => [label, formatValue(value)])
+      .filter(([, value]) => value !== null);
     return el(
       'dl',
-      { className: 'env' },
-      rows.flatMap(([label, value]) => [
-        el('dt', { text: label }),
-        el('dd', { text: formatValue(value) }),
-      ]),
+      { className: 'facts' },
+      shown.flatMap(([label, value]) => [el('dt', { text: label }), el('dd', { text: value })]),
     );
   }
 
-  function flowSection(test, plan) {
-    const byIndex = new Map(test.steps.map((s) => [s.index, s]));
-    const failedIndex = test.failure ? test.failure.step_index : -1;
-    const items = plan.steps.map((step, index) => {
-      const record = byIndex.get(index);
-      const status = record ? record.status : 'not run';
-      const image = record && safeImage(record.screenshot);
-      return el('li', { className: `step${index === failedIndex ? ' is-failed' : ''}` }, [
-        el('span', { className: 'step-index', text: index + 1 }),
-        el('div', {}, [
-          el('span', { text: step.description }),
-          el('span', { className: `pill status-${record ? status : 'skipped'}`, text: status }),
-          el('span', { className: 'step-detail', text: describeStep(step) }),
-          record && record.selector_used
-            ? el('span', { className: 'step-detail', text: `resolved as ${record.selector_used}` })
-            : null,
-        ]),
-        image
-          ? el('a', { className: 'thumb', href: image, target: '_blank', rel: 'noopener' }, [
-              el('img', { src: image, alt: `Screenshot after step ${index + 1}`, loading: 'lazy' }),
-            ])
-          : el('span'),
-      ]);
+  function screenshotButton(path, caption) {
+    const image = safeImage(path);
+    if (!image) return null;
+    const button = el(
+      'button',
+      { type: 'button', className: 'shot', 'aria-label': `View screenshot: ${caption}` },
+      [el('img', { src: image, alt: '', loading: 'lazy' })],
+    );
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openLightbox(image, caption);
     });
-    return el('ol', { className: 'flow' }, items);
+    return button;
   }
 
-  function failureSection(test, plan) {
-    const f = test.failure;
+  // Header
+
+  function renderHeader() {
+    document.getElementById('story-title').textContent = data.story.title;
+    const env = results.environment;
+    const meta = document.getElementById('run-meta');
+    for (const bit of [
+      `Run ${results.run_id}`,
+      env.branch,
+      env.commit ? `${env.commit.slice(0, 7)}${env.dirty ? ' (modified)' : ''}` : null,
+      new Date(results.finished_at).toLocaleString(),
+    ]) {
+      if (bit) meta.append(el('span', { text: bit }));
+    }
+    const stats = document.getElementById('stats');
+    const s = results.summary;
+    stats.append(
+      el('span', { className: 'stat', role: 'listitem' }, [
+        el('strong', { text: s.total }),
+        'tests',
+      ]),
+    );
+    for (const key of ['passed', 'failed', 'error', 'skipped']) {
+      if (s[key] > 0) {
+        stats.append(
+          el('span', { className: 'stat', role: 'listitem' }, [
+            el('strong', { text: s[key] }),
+            el('span', {
+              className: `status status-${key}`,
+              text: STATUS_LABEL[key].toLowerCase(),
+            }),
+          ]),
+        );
+      }
+    }
+    // Time spent in steps. The run's wall-clock time also includes sign-in pauses.
+    const testTime = results.tests.reduce((sum, t) => sum + (t.duration_ms || 0), 0);
+    if (testTime > 0) {
+      stats.append(
+        el('span', { className: 'stat', role: 'listitem', title: 'Time spent in test steps' }, [
+          el('strong', { text: formatMs(testTime) }),
+          'test time',
+        ]),
+      );
+    }
+    document.getElementById('export-target').textContent = `Exports to ${data.options.target}`;
+  }
+
+  // Tests
+
+  function failureCallout(result, plan) {
+    const f = result.failure;
     if (!f) return null;
     const step = plan.steps[f.step_index];
-    const image = safeImage(f.screenshot);
-    return el('div', { className: 'failure' }, [
-      el('h3', {
-        className: 'section-title',
-        text: `Failed at step ${f.step_index + 1}${step ? `: ${step.description}` : ''}`,
+    const caption = `Step ${f.step_index + 1}${step ? `: ${step.description}` : ''}`;
+    return el('div', { className: 'callout', role: 'note' }, [
+      el('p', {
+        className: 'callout-title',
+        text: `${result.status === 'error' ? 'Stopped' : 'Failed'} at step ${f.step_index + 1}${step ? ` · ${step.description}` : ''}`,
       }),
-      el('p', { text: f.message }),
+      el('p', { className: 'callout-message', text: f.message }),
       f.expected || f.actual
         ? el('div', { className: 'compare' }, [
             el('div', {}, [
-              el('strong', { text: 'Expected' }),
+              el('span', { className: 'compare-label', text: 'Expected' }),
               el('p', { text: f.expected || '—' }),
             ]),
-            el('div', {}, [el('strong', { text: 'Actual' }), el('p', { text: f.actual || '—' })]),
+            el('div', {}, [
+              el('span', { className: 'compare-label', text: 'Actual' }),
+              el('p', { text: f.actual || '—' }),
+            ]),
           ])
         : null,
-      image
-        ? el('img', { src: image, alt: `Screenshot of the failing step ${f.step_index + 1}` })
-        : null,
+      screenshotButton(f.screenshot, caption),
     ]);
   }
 
-  function signalsSection(test) {
-    const q = test.quality || {};
+  function stepList(result, plan) {
+    const byIndex = new Map(result.steps.map((s) => [s.index, s]));
+    const failedIndex = result.failure ? result.failure.step_index : -1;
+    return el(
+      'ol',
+      { className: 'steps' },
+      plan.steps.map((step, index) => {
+        const record = byIndex.get(index);
+        return el('li', { className: `step${index === failedIndex ? ' is-failed' : ''}` }, [
+          el('span', { className: 'step-number', text: index + 1 }),
+          el('div', { className: 'step-text' }, [
+            el('span', { text: step.description }),
+            el('span', {
+              className: 'step-action',
+              text:
+                record && record.selector_used
+                  ? `${describeStep(step)} → ${record.selector_used}`
+                  : describeStep(step),
+              title: describeStep(step),
+            }),
+          ]),
+          statusBadge(record ? record.status : null),
+          screenshotButton(record && record.screenshot, `Step ${index + 1}: ${step.description}`) ||
+            el('span', { className: 'no-shot', 'aria-hidden': 'true' }),
+        ]);
+      }),
+    );
+  }
+
+  function detailsSection(result, plan) {
+    const env = result.env_state;
+    const q = result.quality || {};
     const rows = [
+      ['Persona', env.persona],
+      ['Role', env.role],
+      ['Permissions', env.permissions],
+      ['Settings', env.settings],
+      ['Feature flags', env.feature_flags],
+      ['Seed profile', env.seed_profile],
+      ['Build', env.build],
       ['Selector stability', q.selector_stability],
       [
         'Rerun consistency',
         q.rerun_consistency === undefined ? undefined : `${Math.round(q.rerun_consistency * 100)}%`,
       ],
-      ['Attempts', test.attempts],
+      ['Attempts', result.attempts],
     ];
     if (data.options.show_overlap) {
       rows.push([
         'Overlaps with',
-        q.overlap_with && q.overlap_with.length ? q.overlap_with.join(', ') : 'none',
+        q.overlap_with && q.overlap_with.length ? q.overlap_with : 'None',
       ]);
     }
-    if (test.triage) {
+    if (result.triage) {
       rows.push([
         'Triage',
-        `${test.triage.class} (${test.triage.confidence}): ${test.triage.rationale}`,
+        `${result.triage.class} (${result.triage.confidence} confidence) — ${result.triage.rationale}`,
       ]);
     }
-    return el(
-      'dl',
-      { className: 'signals' },
-      rows
-        .filter(([, v]) => v !== undefined)
-        .map(([label, value]) =>
-          el('div', {}, [el('dt', { text: label }), el('dd', { text: value })]),
-        ),
-    );
+    if (plan.criteria && plan.criteria.length) rows.push(['Covers', plan.criteria]);
+    const children = [el('summary', { text: 'Environment and quality' }), facts(rows)];
+    const details = el('details', { className: 'details' }, children);
+    if (!data.options.show_code_preview) return [details];
+    return [
+      details,
+      el('details', { className: 'details' }, [
+        el('summary', {
+          text: `Test definition (${data.options.target} code arrives with export)`,
+        }),
+        el('pre', {}, [el('code', { text: JSON.stringify(plan, null, 2) })]),
+      ]),
+    ];
   }
 
-  function card(test) {
-    const plan = planById.get(test.test_id);
-    if (!plan) return null;
+  function testCard({ result, plan }) {
+    const id = result.test_id;
+    const bodyId = `body-${id}`;
     const checkbox = el('input', {
       type: 'checkbox',
       'aria-label': `Select ${plan.name}`,
-      'data-test-id': test.test_id,
+      'data-test-id': id,
     });
-    const node = el(
-      'article',
-      {
-        className: 'card',
-        'data-status': test.status,
-        'data-persona': plan.persona,
-        'data-story': results.story_id,
-        'aria-labelledby': `title-${test.test_id}`,
-      },
+    const toggle = el(
+      'button',
+      { type: 'button', className: 'toggle', 'aria-expanded': 'false', 'aria-controls': bodyId },
       [
-        el('div', { className: 'card-head' }, [
-          checkbox,
-          el('div', { className: 'card-title' }, [
-            el('h2', { id: `title-${test.test_id}`, text: plan.name }),
-            el('span', { className: 'card-ids', text: `${test.test_id} · ${results.story_id}` }),
-          ]),
-          el('div', {}, [
-            el('span', { className: `pill status-${test.status}`, text: test.status }),
-            el('span', { className: 'duration', text: formatMs(test.duration_ms) }),
-          ]),
+        statusBadge(result.status),
+        el('span', { className: 'toggle-text' }, [
+          el('span', { className: 'test-name', text: plan.name }),
+          result.failure
+            ? el('span', { className: 'test-reason', text: result.failure.message })
+            : null,
         ]),
-        el('p', { className: 'intent', text: plan.intent }),
-        el('h3', { className: 'section-title', text: 'Environment' }),
-        envSection(test.env_state),
-        el('h3', { className: 'section-title', text: 'Flow' }),
-        flowSection(test, plan),
-        failureSection(test, plan),
-        el('h3', { className: 'section-title', text: 'Quality signals' }),
-        signalsSection(test),
-        data.options.show_code_preview
-          ? el('details', {}, [
-              el('summary', { text: `Code preview (${data.options.target})` }),
-              el('p', {
-                className: 'meta',
-                text: 'Exported code appears here once an emitter exists for this target. Until then, this is the test as Tessa stores it.',
-              }),
-              el('pre', {}, [el('code', { text: JSON.stringify(plan, null, 2) })]),
-            ])
-          : null,
+        el('span', { className: 'tag', text: plan.persona }),
+        el('span', { className: 'duration', text: formatMs(result.duration_ms) }),
       ],
     );
+    const body = el('div', { className: 'test-body', id: bodyId, hidden: true }, [
+      el('p', { className: 'intent', text: plan.intent }),
+      failureCallout(result, plan),
+      el('p', { className: 'section-label', text: `Steps (${plan.steps.length})` }),
+      stepList(result, plan),
+      ...detailsSection(result, plan),
+    ]);
+    const card = el(
+      'article',
+      {
+        className: 'test',
+        'data-status': result.status,
+        'data-persona': plan.persona,
+        'aria-label': plan.name,
+      },
+      [el('div', { className: 'test-row' }, [checkbox, toggle, chevron()]), body],
+    );
+
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-expanded') !== 'true';
+      toggle.setAttribute('aria-expanded', String(open));
+      body.hidden = !open;
+      card.classList.toggle('is-open', open);
+    });
     checkbox.addEventListener('change', () => {
-      if (checkbox.checked) selected.add(test.test_id);
-      else selected.delete(test.test_id);
-      node.classList.toggle('is-selected', checkbox.checked);
+      if (checkbox.checked) selected.add(id);
+      else selected.delete(id);
+      card.classList.toggle('is-selected', checkbox.checked);
       updateFooter();
     });
-    return node;
+    return card;
   }
 
-  function fillSelect(id, label, values) {
-    const select = document.getElementById(id);
-    select.append(el('option', { value: '', text: `All ${label}` }));
-    for (const value of [...new Set(values)].sort()) {
-      select.append(el('option', { value, text: value }));
+  // Filters
+
+  function renderStatusFilter() {
+    const group = document.getElementById('status-filter');
+    const counts = {};
+    for (const t of tests) counts[t.result.status] = (counts[t.result.status] || 0) + 1;
+    const options = [['', 'All', tests.length]].concat(
+      Object.keys(STATUS_ORDER)
+        .filter((s) => counts[s])
+        .map((s) => [s, STATUS_LABEL[s], counts[s]]),
+    );
+    for (const [value, label, count] of options) {
+      const button = el(
+        'button',
+        { type: 'button', 'aria-pressed': String(value === filters.status) },
+        [label, el('span', { className: 'count', text: count })],
+      );
+      button.addEventListener('click', () => {
+        filters.status = value;
+        for (const b of group.querySelectorAll('button'))
+          b.setAttribute('aria-pressed', String(b === button));
+        applyFilters();
+      });
+      group.append(button);
     }
-    select.addEventListener('change', applyFilters);
+  }
+
+  function renderPersonaFilter() {
+    const personas = [...new Set(tests.map((t) => t.plan.persona))].sort();
+    const select = document.getElementById('filter-persona');
+    if (personas.length < 2) {
+      document.getElementById('persona-wrap').hidden = true;
+      return;
+    }
+    select.append(el('option', { value: '', text: 'All personas' }));
+    for (const p of personas) select.append(el('option', { value: p, text: p }));
+    select.addEventListener('change', () => {
+      filters.persona = select.value;
+      applyFilters();
+    });
   }
 
   function applyFilters() {
-    const status = document.getElementById('filter-status').value;
-    const persona = document.getElementById('filter-persona').value;
-    const story = document.getElementById('filter-story').value;
     let visible = 0;
-    for (const node of document.querySelectorAll('.card')) {
+    for (const card of document.querySelectorAll('.test')) {
       const show =
-        (!status || node.dataset.status === status) &&
-        (!persona || node.dataset.persona === persona) &&
-        (!story || node.dataset.story === story);
-      node.hidden = !show;
+        (!filters.status || card.dataset.status === filters.status) &&
+        (!filters.persona || card.dataset.persona === filters.persona);
+      card.hidden = !show;
       if (show) visible++;
     }
-    document.getElementById('visible-count').textContent =
-      `${visible} of ${results.tests.length} shown`;
+    document.getElementById('empty').hidden = visible > 0;
   }
+
+  // Selection and export
 
   function setChecked(testId, checked) {
     const box = document.querySelector(`input[data-test-id="${CSS.escape(testId)}"]`);
@@ -295,8 +403,16 @@
   }
 
   function updateFooter() {
-    document.getElementById('selected-count').textContent = `${selected.size} selected`;
-    document.getElementById('export').disabled = selected.size === 0;
+    const n = selected.size;
+    document.getElementById('selected-count').textContent =
+      n === 0 ? 'No tests selected' : `${n} test${n === 1 ? '' : 's'} selected`;
+    document.getElementById('export').disabled = n === 0;
+    document.getElementById('select-none').hidden = n === 0;
+  }
+
+  function selectionIds() {
+    // Plan order, so exported files are predictable.
+    return results.tests.map((t) => t.test_id).filter((id) => selected.has(id));
   }
 
   function showDialog(title, body, text) {
@@ -307,11 +423,6 @@
     area.hidden = copy.hidden = text === undefined;
     area.value = text || '';
     document.getElementById('dialog').showModal();
-  }
-
-  function selectionIds() {
-    // Keep plan order so the exported files are predictable.
-    return results.tests.map((t) => t.test_id).filter((id) => selected.has(id));
   }
 
   async function exportToServer() {
@@ -359,31 +470,30 @@
     );
   }
 
-  header();
-  const cards = document.getElementById('cards');
-  for (const test of results.tests) {
-    const node = card(test);
-    if (node) cards.append(node);
+  // Lightbox
+
+  function openLightbox(src, caption) {
+    document.getElementById('lightbox-image').src = src;
+    document.getElementById('lightbox-image').alt = caption;
+    document.getElementById('lightbox-caption').textContent = caption;
+    document.getElementById('lightbox').showModal();
   }
-  fillSelect(
-    'filter-status',
-    'statuses',
-    results.tests.map((t) => t.status),
-  );
-  fillSelect(
-    'filter-persona',
-    'personas',
-    results.tests.map((t) => planById.get(t.test_id)?.persona).filter(Boolean),
-  );
-  fillSelect('filter-story', 'stories', [results.story_id]);
+
+  // Wire up
+
+  renderHeader();
+  const list = document.getElementById('cards');
+  for (const t of tests) list.append(testCard(t));
+  renderStatusFilter();
+  renderPersonaFilter();
   applyFilters();
   updateFooter();
 
   document.getElementById('select-passing').addEventListener('click', () => {
-    for (const t of results.tests) if (t.status === 'passed') setChecked(t.test_id, true);
+    for (const t of tests) if (t.result.status === 'passed') setChecked(t.result.test_id, true);
   });
   document.getElementById('select-none').addEventListener('click', () => {
-    for (const t of results.tests) setChecked(t.test_id, false);
+    for (const t of tests) setChecked(t.result.test_id, false);
   });
   document.getElementById('export').addEventListener('click', () => {
     if (served) exportToServer();
@@ -394,5 +504,11 @@
     .addEventListener('click', () => document.getElementById('dialog').close());
   document.getElementById('dialog-copy').addEventListener('click', () => {
     navigator.clipboard?.writeText(document.getElementById('dialog-text').value);
+  });
+  const lightbox = document.getElementById('lightbox');
+  document.getElementById('lightbox-close').addEventListener('click', () => lightbox.close());
+  // Clicking the backdrop (the dialog element itself, outside its content) closes it.
+  lightbox.addEventListener('click', (event) => {
+    if (event.target === lightbox) lightbox.close();
   });
 })();

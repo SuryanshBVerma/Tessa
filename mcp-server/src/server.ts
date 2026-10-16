@@ -596,10 +596,18 @@ export function createServer({ workspace }: ServerOptions): McpServer {
     {
       title: 'Get the reviewer selection',
       description:
-        'Return the tests the reviewer selected for a run (selection.json). With wait_seconds, waits that long for the reviewer to press Export on the review page.',
+        'Return the tests the reviewer selected for a run (selection.json). With wait_seconds (up to 50), waits that long for the reviewer to press Export; if the status is still waiting, call again.',
       inputSchema: {
         run_id: z.string(),
-        wait_seconds: z.number().int().min(0).max(120).optional(),
+        wait_seconds: z
+          .number()
+          .int()
+          .min(0)
+          .max(50)
+          .optional()
+          .describe(
+            'Wait up to this long (MCP clients often time out at 60 s). Call again to keep waiting.',
+          ),
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },

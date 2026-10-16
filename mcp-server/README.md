@@ -22,7 +22,7 @@ agents and skills call these tools instead of running shell commands or editing 
 | `write_results`     | no               | Builds `results.json`; status, failures, attempts and quality signals are computed from the recorded steps                                                                          |
 | `render_report`     | no               | Renders `report.html` from a fixed template; cards are built with DOM APIs from embedded JSON, under a nonce-based CSP                                                              |
 | `serve_review`      | no               | Serves the report on `127.0.0.1` at a random port behind a per-session path token; checks Host and Origin, stops after the idle timeout                                             |
-| `get_selection`     | yes              | Returns the reviewer's `selection.json`, optionally waiting up to 120 s for Export                                                                                                  |
+| `get_selection`     | yes              | Returns the reviewer's `selection.json`, optionally waiting up to 50 s per call for Export                                                                                          |
 | `record_selection`  | no               | Saves a selection pasted from a report opened from disk (static fallback)                                                                                                           |
 | `stop_review`       | no               | Stops the review server                                                                                                                                                             |
 
