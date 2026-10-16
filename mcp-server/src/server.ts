@@ -18,7 +18,7 @@ import type { FrontendMap } from './context/types.js';
 import { UnsafeDatabaseError } from './db/guard.js';
 import { emitTests, ExportError, updateExportFile } from './export/export.js';
 import { applyHandoff, proposeHandoff } from './export/handoff.js';
-import { captureSession, validateExport } from './export/validate.js';
+import { SessionCapture, validateExport } from './export/validate.js';
 import { SeedError, seedProfile, type SeedResult } from './db/seed.js';
 import { detectStack, loadConfig, type ConfigIssue, type ResolvedConfig } from './config/index.js';
 import { initWorkspace } from './init/index.js';
@@ -110,6 +110,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
   const app = new AppManager(workspace);
   const review = new ReviewServer();
+  const sessions = new SessionCapture();
   // Never leave the app under test running after the host disconnects or the server exits.
   const onExit = () => {
     app.dispose();
@@ -1090,6 +1091,12 @@ export function createServer({ workspace }: ServerOptions): McpServer {
   );
 
   const exportCtx = () => ({ config: requireConfig(), workspace });
+  const channelArg = z
+    .enum(['msedge', 'chrome'])
+    .optional()
+    .describe(
+      "Use an installed browser instead of Playwright's bundled Chromium, e.g. when the bundled build cannot run on this machine.",
+    );
   const targetArg = z
     .enum(['playwright-ts', 'playwright-dotnet', 'cypress-ts', 'selenium-csharp', 'selenium-java'])
     .optional()
@@ -1150,13 +1157,15 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         story: z.string().min(1),
         target: z.enum(['playwright-ts', 'playwright-dotnet']),
         run_once: z.boolean().optional().describe('Defaults to export.validate.run_once.'),
+        browser_channel: channelArg,
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
-    async ({ story, target, run_once }) => {
+    async ({ story, target, run_once, browser_channel }) => {
       try {
         const report = await validateExport(exportCtx(), target, story, {
           ...(run_once === undefined ? {} : { runOnce: run_once }),
+          ...(browser_channel === undefined ? {} : { channel: browser_channel }),
         });
         const failed = report.outcomes.filter((o) => o.status === 'failed').length;
         return result({ ok: report.compiled && failed === 0, ...report }, !report.compiled);
@@ -1171,13 +1180,29 @@ export function createServer({ workspace }: ServerOptions): McpServer {
     {
       title: 'Capture a signed-in session',
       description:
-        "For running exported tests: open Playwright's own browser at the login page so the USER signs in as the persona, then closes the window. Playwright saves the session to the gitignored .session/ folder. Tessa never sees or types the credentials. Waits up to 10 minutes.",
-      inputSchema: { persona: z.string().min(1) },
+        "For running exported tests: open Playwright's own browser at the login page so the USER signs in as the persona, then closes the window. Playwright saves the session to the gitignored .session/ folder. Tessa never sees or types the credentials. Each call waits up to 50 s and returns waiting until the user is done; call again to keep waiting.",
+      inputSchema: {
+        persona: z.string().min(1),
+        wait_seconds: z
+          .number()
+          .int()
+          .min(0)
+          .max(50)
+          .optional()
+          .describe('How long to wait this call; default 50.'),
+        browser_channel: channelArg,
+      },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
-    async ({ persona }) => {
+    async ({ persona, wait_seconds, browser_channel }) => {
       try {
-        return result({ ok: true, ...(await captureSession(exportCtx(), persona)) });
+        const status = await sessions.capture(
+          exportCtx(),
+          persona,
+          (wait_seconds ?? 50) * 1000,
+          browser_channel,
+        );
+        return result({ ok: status.status !== 'failed', ...status }, status.status === 'failed');
       } catch (error) {
         return failure(error);
       }

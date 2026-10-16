@@ -214,7 +214,7 @@ export async function validateExport(
   ctx: ExportCtx,
   target: string,
   story: string,
-  options: { runOnce?: boolean } = {},
+  options: { runOnce?: boolean; channel?: BrowserChannel } = {},
 ): Promise<ValidationReport> {
   const manifest = readManifest(ctx, target, story);
   const dir = exportDir(ctx, target, story);
@@ -228,7 +228,12 @@ export async function validateExport(
 
   const personas = personasOf(dir, testFiles);
   const missingSessions = personas.filter((p) => !existsSync(sessionPath(ctx, p)));
-  const env: NodeJS.ProcessEnv = { ...process.env, BASE_URL: ctx.config.app.url, CI: '1' };
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    BASE_URL: ctx.config.app.url,
+    CI: '1',
+    ...(options.channel === undefined ? {} : { PLAYWRIGHT_CHANNEL: options.channel }),
+  };
   for (const p of personas) env[authEnv(p)] = sessionPath(ctx, p);
 
   if (target === 'playwright-ts') {
@@ -290,6 +295,9 @@ export async function validateExport(
             'trx;LogFileName=results.trx',
             '--results-directory',
             results,
+            ...(options.channel === undefined
+              ? []
+              : ['--', `Playwright.LaunchOptions.Channel=${options.channel}`]),
           ],
           { cwd: dir, env, timeout: RUN_TIMEOUT_MS },
         );
@@ -319,27 +327,93 @@ export async function validateExport(
   return { ...report, summary_path: exportRel(ctx, target, story, 'export-summary.md') };
 }
 
+/** An installed, signed browser to use instead of Playwright's bundled Chromium. */
+export type BrowserChannel = 'msedge' | 'chrome';
+
+export interface SessionStatus {
+  persona: string;
+  status: 'waiting' | 'saved' | 'failed';
+  path: string;
+  message: string;
+}
+
 /**
  * Opens Playwright's own browser at the login page so the user can sign in; Playwright saves the
  * session to <artifacts>/.session/<persona>.json when they close the window. Tessa never sees the
  * credentials, and the file stays in the gitignored .session/ folder.
+ *
+ * The browser stays open while the user signs in, which can take minutes, so a call waits at most
+ * waitMs (MCP clients often time out at 60 s) and reports "waiting"; calling again keeps waiting.
  */
-export async function captureSession(ctx: ExportCtx, persona: string) {
-  if (!ctx.config.personas.some((p) => p.name === persona))
-    throw new ExportError(`unknown persona "${persona}"`);
-  const cli = playwrightCli(ctx.workspace);
-  if (cli === null) throw new ExportError('@playwright/test is not installed in this workspace');
-  const file = sessionPath(ctx, persona);
-  mkdirSync(dirname(file), { recursive: true });
-  const loginUrl = new URL(ctx.config.auth.login_path, ctx.config.app.url).toString();
-  const run = await exec(process.execPath, [cli, 'open', `--save-storage=${file}`, loginUrl], {
-    cwd: ctx.workspace,
-    timeout: SESSION_TIMEOUT_MS,
-  });
-  if (!existsSync(file)) {
-    throw new ExportError(
-      `no session was saved (${tail(run.stderr, 3).join(' | ') || 'the window was closed before signing in?'})`,
-    );
+export class SessionCapture {
+  private readonly running = new Map<string, { done: Promise<ExecResult>; result?: ExecResult }>();
+
+  async capture(
+    ctx: ExportCtx,
+    persona: string,
+    waitMs: number,
+    channel?: BrowserChannel,
+  ): Promise<SessionStatus> {
+    if (!ctx.config.personas.some((p) => p.name === persona)) {
+      throw new ExportError(`unknown persona "${persona}"`);
+    }
+    const file = sessionPath(ctx, persona);
+    const shown = posix.join(ctx.config.artifacts.root, '.session', `${persona}.json`);
+    let entry = this.running.get(persona);
+    if (entry === undefined) {
+      const cli = playwrightCli(ctx.workspace);
+      if (cli === null)
+        throw new ExportError('@playwright/test is not installed in this workspace');
+      mkdirSync(dirname(file), { recursive: true });
+      rmSync(file, { force: true });
+      const loginUrl = new URL(ctx.config.auth.login_path, ctx.config.app.url).toString();
+      const created: { done: Promise<ExecResult>; result?: ExecResult } = {
+        done: exec(
+          process.execPath,
+          [
+            cli,
+            'open',
+            ...(channel === undefined ? [] : [`--channel=${channel}`]),
+            `--save-storage=${file}`,
+            loginUrl,
+          ],
+          {
+            cwd: ctx.workspace,
+            timeout: SESSION_TIMEOUT_MS,
+          },
+        ),
+      };
+      void created.done.then((r) => {
+        created.result = r;
+      });
+      this.running.set(persona, created);
+      entry = created;
+    }
+    const finished = await Promise.race([
+      entry.done.then(() => true),
+      new Promise<boolean>((resolve) => {
+        setTimeout(() => {
+          resolve(false);
+        }, waitMs);
+      }),
+    ]);
+    if (!finished) {
+      return {
+        persona,
+        status: 'waiting',
+        path: shown,
+        message: `A browser window is open at the login page. Ask the user to sign in as ${persona} and then close the window; call capture_session again to keep waiting.`,
+      };
+    }
+    this.running.delete(persona);
+    if (existsSync(file)) {
+      return { persona, status: 'saved', path: shown, message: 'Session saved.' };
+    }
+    return {
+      persona,
+      status: 'failed',
+      path: shown,
+      message: `No session was saved (${tail(entry.result?.stderr ?? '', 3).join(' | ') || 'the window was closed before signing in?'}). Call capture_session to try again.`,
+    };
   }
-  return { persona, saved: posix.join(ctx.config.artifacts.root, '.session', `${persona}.json`) };
 }

@@ -13,7 +13,7 @@ import {
   type Emitter,
 } from './common.js';
 
-export const PLAYWRIGHT_DOTNET_VERSION = '1.52.0';
+export const PLAYWRIGHT_DOTNET_VERSION = '1.63.0';
 export const DOTNET_PACKAGES: Record<string, string> = {
   'Microsoft.Playwright.NUnit': PLAYWRIGHT_DOTNET_VERSION,
   'Microsoft.NET.Test.Sdk': '17.13.0',

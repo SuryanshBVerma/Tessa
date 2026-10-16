@@ -234,7 +234,7 @@ describe('playwright-dotnet emitter', () => {
       'StorageStatePath = Environment.GetEnvironmentVariable("TESSA_AUTH_EDITOR") ?? ".auth/editor.json",',
     );
     expect(project?.content).toContain(
-      '<PackageReference Include="Microsoft.Playwright.NUnit" Version="1.52.0" />',
+      '<PackageReference Include="Microsoft.Playwright.NUnit" Version="1.63.0" />',
     );
   });
 

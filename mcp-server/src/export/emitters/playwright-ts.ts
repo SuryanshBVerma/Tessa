@@ -13,7 +13,7 @@ import {
   type Emitter,
 } from './common.js';
 
-export const PLAYWRIGHT_TS_VERSION = '1.52.0';
+export const PLAYWRIGHT_TS_VERSION = '1.63.0';
 
 function locator(target: Plan.Target): string {
   const exact = target.exact === true ? ', { exact: true }' : '';
@@ -185,7 +185,16 @@ function configFile(input: EmitInput): string {
     `    baseURL: process.env.BASE_URL ?? ${str(input.appUrl)},`,
     "    trace: 'retain-on-failure',",
     '  },',
-    "  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],",
+    '  projects: [',
+    '    {',
+    "      name: 'chromium',",
+    '      use: {',
+    "        ...devices['Desktop Chrome'],",
+    '        // Set PLAYWRIGHT_CHANNEL=msedge or chrome to use an installed browser instead.',
+    '        ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}),',
+    '      },',
+    '    },',
+    '  ],',
     '});',
     '',
   ].join('\n');
