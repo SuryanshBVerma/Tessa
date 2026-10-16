@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
-import { selectorStability } from '../src/runs/results.js';
+import { overlaps, selectorStability } from '../src/runs/results.js';
 import { SCHEMAS_DIR, validate } from '../src/schemas/index.js';
 import { call, connect, tempWorkspace } from './helpers.js';
 
@@ -307,5 +307,39 @@ describe('selectorStability', () => {
       steps: targets.map(step),
     };
     expect(selectorStability(test as any)).toBe(expected);
+  });
+});
+
+describe('overlaps', () => {
+  const t = (id: string, values: string[]) => ({
+    id,
+    name: id,
+    intent: id,
+    persona: 'p',
+    preconditions: { seed_profile: 'default' },
+    steps: values.map((value) => ({
+      action: 'click' as const,
+      description: value,
+      target: { strategy: 'testid' as const, value },
+    })),
+  });
+
+  it('links tests whose steps mostly match, in both directions', () => {
+    const result = overlaps([
+      t('a', ['1', '2', '3', '4', '5']),
+      t('b', ['1', '2', '3', '4', '5']),
+      t('c', ['1', '9']),
+    ] as any);
+    expect(result.get('a')).toEqual(['b']);
+    expect(result.get('b')).toEqual(['a']);
+    expect(result.get('c')).toEqual([]);
+  });
+
+  it('ignores step descriptions when comparing', () => {
+    const a = t('a', ['1', '2']);
+    const b = t('b', ['1', '2']);
+    const [first] = b.steps;
+    if (first) first.description = 'worded differently';
+    expect(overlaps([a, b] as any).get('a')).toEqual(['b']);
   });
 });

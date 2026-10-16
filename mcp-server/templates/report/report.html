@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src 'self' file: data:; style-src 'nonce-{{NONCE}}'; script-src 'nonce-{{NONCE}}'; connect-src 'self'; form-action 'none'; base-uri 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <title>{{TITLE}}</title>
+    <style nonce="{{NONCE}}">
+      {{STYLE}}
+    </style>
+  </head>
+  <body>
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Tessa report</p>
+        <h1 id="story-title"></h1>
+        <p class="meta" id="run-meta"></p>
+      </div>
+      <dl class="summary" id="summary" aria-label="Summary"></dl>
+    </header>
+
+    <section class="toolbar" aria-label="Filters">
+      <label
+        >Status
+        <select id="filter-status"></select
+      ></label>
+      <label
+        >Persona
+        <select id="filter-persona"></select
+      ></label>
+      <label
+        >Story
+        <select id="filter-story"></select
+      ></label>
+      <button type="button" id="select-passing">Select all passing</button>
+      <button type="button" id="select-none">Clear selection</button>
+      <span class="toolbar-note" id="visible-count" aria-live="polite"></span>
+    </section>
+
+    <main id="cards" aria-label="Tests"></main>
+
+    <footer class="footer" aria-label="Selection">
+      <span id="selected-count">0 selected</span>
+      <span class="footer-target" id="export-target"></span>
+      <button type="button" class="primary" id="export" disabled>Export selected</button>
+    </footer>
+
+    <dialog id="dialog" aria-labelledby="dialog-title">
+      <h2 id="dialog-title"></h2>
+      <p id="dialog-body"></p>
+      <textarea id="dialog-text" rows="8" readonly hidden></textarea>
+      <div class="dialog-actions">
+        <button type="button" id="dialog-copy" hidden>Copy</button>
+        <button type="button" id="dialog-close">Close</button>
+      </div>
+    </dialog>
+
+    <script type="application/json" id="tessa-data">
+      {{DATA}}
+    </script>
+    <script nonce="{{NONCE}}">
+      {{SCRIPT}}
+    </script>
+  </body>
+</html>

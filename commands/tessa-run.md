@@ -12,6 +12,7 @@ tools:
     tessa-mcp/capture_env_state,
     tessa-mcp/record_step,
     tessa-mcp/write_results,
+    tessa-mcp/render_report,
     browser,
   ]
 ---
@@ -45,6 +46,8 @@ skill. The user will be asked to sign in for each persona; that pause is expecte
 ## 4. Finish
 
 - If Tessa started the app in step 2, call `stop_app`.
+- Call `render_report` and give the user the report path. It opens from disk; for selecting
+  tests to export, `serve_review` serves it with an Export button.
 - Report the summary counts, then each failed or errored test with its failing step and one
   line on what happened, and the path to `results.json`.
 - Mention that run output (screenshots included) is gitignored and stays on this machine.

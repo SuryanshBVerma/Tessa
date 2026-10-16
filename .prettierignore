@@ -14,3 +14,6 @@ package-lock.json
 **/ai-test-artifacts/runs/
 **/ai-test-artifacts/diffs/
 **/ai-test-artifacts/.session/
+
+# Placeholder template: {{SCRIPT}} and {{STYLE}} are not valid JS/CSS for Prettier
+mcp-server/templates/report/report.html

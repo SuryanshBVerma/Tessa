@@ -55,7 +55,7 @@ Stack adapters are the main extension point: an adapter skill plus an extractor 
 | Database           | `seed_db(profile)`, `reset_db` — allowlisted scripts only, local hosts only                                                                                          |
 | Context            | `build_static_map`, `context_freshness`, `routes_for_feature`, `components_for_route`, `permissions_for_route`, `api_calls_for_component`, `selectors_for_component` |
 | Evidence & results | `begin_run`, `capture_env_state`, `record_step`, `write_results`                                                                                                     |
-| Review             | `render_report`, `serve_review`, `get_selection`, `stop_review`                                                                                                      |
+| Review             | `render_report`, `serve_review`, `get_selection`, `record_selection`, `stop_review`                                                                                  |
 | Runs               | `list_runs`, `diff_runs`, `failed_test_ids`                                                                                                                          |
 | Export             | `emit_tests(selection, target)`, `validate_export`                                                                                                                   |
 

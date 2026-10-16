@@ -33,6 +33,45 @@ function statusOf(steps: readonly StepRecord[], planSteps: number): TestStatus {
 }
 
 /** high: test IDs and roles only; medium: labels or placeholders; low: CSS or visible text. */
+/** One string per step that identifies what it does, for comparing tests. */
+function stepSignature(step: Plan.Step): string {
+  const target =
+    step.target === undefined
+      ? ''
+      : step.target.strategy === 'role'
+        ? `role:${step.target.role}:${step.target.name ?? ''}`
+        : `${step.target.strategy}:${step.target.value}`;
+  return `${step.action}|${target}|${step.value ?? ''}|${JSON.stringify(step.assertion ?? null)}`;
+}
+
+export const OVERLAP_THRESHOLD = 0.8;
+
+/**
+ * For each test, the other tests whose steps mostly match (Jaccard similarity of step
+ * signatures at or above OVERLAP_THRESHOLD). Helps reviewers avoid exporting near-duplicates.
+ */
+export function overlaps(tests: readonly Plan.Test[]): Map<string, string[]> {
+  const signatures = tests.map((t) => new Set(t.steps.map(stepSignature)));
+  const result = new Map<string, string[]>(tests.map((t) => [t.id, []]));
+  for (let i = 0; i < tests.length; i++) {
+    for (let j = i + 1; j < tests.length; j++) {
+      const a = signatures[i] ?? new Set<string>();
+      const b = signatures[j] ?? new Set<string>();
+      const shared = [...a].filter((sig) => b.has(sig)).length;
+      const union = new Set([...a, ...b]).size;
+      if (union > 0 && shared / union >= OVERLAP_THRESHOLD) {
+        const ti = tests[i];
+        const tj = tests[j];
+        if (ti !== undefined && tj !== undefined) {
+          result.get(ti.id)?.push(tj.id);
+          result.get(tj.id)?.push(ti.id);
+        }
+      }
+    }
+  }
+  return result;
+}
+
 export function selectorStability(test: Plan.Test): 'high' | 'medium' | 'low' {
   const strategies = test.steps.flatMap((step) =>
     step.target === undefined ? [] : [step.target.strategy],
@@ -87,6 +126,7 @@ export function buildResults(
   finishedAt = new Date(),
 ): { ok: true; results: Results.RunResults } | { ok: false; issues: SchemaIssue[] } {
   const testsById = new Map(plan.tests.map((t) => [t.id, t]));
+  const overlapping = overlaps(plan.tests);
   const tests: Results.TestResult[] = [];
 
   for (const testId of state.test_ids) {
@@ -119,6 +159,7 @@ export function buildResults(
       quality: {
         selector_stability: selectorStability(test),
         rerun_consistency: Math.round((consistent / attempts) * 100) / 100,
+        overlap_with: overlapping.get(testId) ?? [],
       },
     });
   }
