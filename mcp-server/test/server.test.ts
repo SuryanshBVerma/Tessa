@@ -17,6 +17,7 @@ describe('tessa-mcp server', () => {
     const { tools } = await client.listTools();
     const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
     expect(Object.keys(byName).sort()).toEqual([
+      'capture_env_state',
       'detect_stack',
       'health_check',
       'init_workspace',

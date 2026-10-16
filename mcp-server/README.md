@@ -5,17 +5,18 @@ agents and skills call these tools instead of running shell commands or editing 
 
 ## Tools
 
-| Tool              | Read-only        | What it does                                                                                                                                                                        |
-| ----------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `detect_stack`    | yes              | Suggests the stack adapter, export targets, package manager and start command                                                                                                       |
-| `load_config`     | yes              | Reads `.tessa/config.yaml`, validates it, and returns it with defaults filled in                                                                                                    |
-| `validate_config` | yes              | Lists config errors and warnings with JSON Pointer paths                                                                                                                            |
-| `init_workspace`  | no               | Creates `.tessa/config.yaml`, the hints file and a managed `.gitignore` block. Supports `dry_run`; replaces a config only with `overwrite` and never replaces hints                 |
-| `start_app`       | no               | Starts the app with `app.start` (no shell operators allowed) and waits for `app.health_path`. Leaves an app that is already up alone                                                |
-| `stop_app`        | no               | Stops the app only if Tessa started it                                                                                                                                              |
-| `health_check`    | yes              | One request to `app.url` + `app.health_path`; any status below 500 counts as healthy                                                                                                |
-| `seed_db`         | no (destructive) | Applies a seed profile's listed `.sql` files in one transaction. Refuses any host that is not local and in `db.allowed_hosts`; reads the URL from `db.url_env` and never returns it |
-| `reset_db`        | no (destructive) | Re-applies the given profile, else the last one seeded, else `default`                                                                                                              |
+| Tool                | Read-only        | What it does                                                                                                                                                                        |
+| ------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `detect_stack`      | yes              | Suggests the stack adapter, export targets, package manager and start command                                                                                                       |
+| `load_config`       | yes              | Reads `.tessa/config.yaml`, validates it, and returns it with defaults filled in                                                                                                    |
+| `validate_config`   | yes              | Lists config errors and warnings with JSON Pointer paths                                                                                                                            |
+| `init_workspace`    | no               | Creates `.tessa/config.yaml`, the hints file and a managed `.gitignore` block. Supports `dry_run`; replaces a config only with `overwrite` and never replaces hints                 |
+| `start_app`         | no               | Starts the app with `app.start` (no shell operators allowed) and waits for `app.health_path`. Leaves an app that is already up alone                                                |
+| `stop_app`          | no               | Stops the app only if Tessa started it                                                                                                                                              |
+| `health_check`      | yes              | One request to `app.url` + `app.health_path`; any status below 500 counts as healthy                                                                                                |
+| `seed_db`           | no (destructive) | Applies a seed profile's listed `.sql` files in one transaction. Refuses any host that is not local and in `db.allowed_hosts`; reads the URL from `db.url_env` and never returns it |
+| `reset_db`          | no (destructive) | Re-applies the given profile, else the last one seeded, else `default`                                                                                                              |
+| `capture_env_state` | yes              | Persona, seed profile, app URL and Git commit/branch/dirty state, merged with what the executor observed in the app                                                                 |
 
 Later phases add results, review, runs and export tools
 (see [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)).

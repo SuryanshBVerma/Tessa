@@ -6,6 +6,7 @@ import { UnsafeDatabaseError } from './db/guard.js';
 import { SeedError, seedProfile, type SeedResult } from './db/seed.js';
 import { detectStack, loadConfig, type ConfigIssue, type ResolvedConfig } from './config/index.js';
 import { initWorkspace } from './init/index.js';
+import { captureEnvState, type Observed } from './results/env.js';
 import { SERVER_NAME, SERVER_VERSION } from './version.js';
 
 const EXPORT_TARGETS = [
@@ -303,6 +304,49 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         const chosen = profile ?? lastSeed?.profile ?? 'default';
         lastSeed = await seedProfile(requireConfig(), workspace, chosen);
         return result({ ok: true, reset_to: chosen, ...lastSeed });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  const shortText = z.string().max(200);
+  server.registerTool(
+    'capture_env_state',
+    {
+      title: 'Capture environment state',
+      description:
+        'Record the environment a test runs in: persona, seed profile, app URL and Git commit/branch/dirty state, merged with what you observed in the app (role, permissions, settings, feature flags, build). Observed values are copied as data. Call once per persona before running its tests.',
+      inputSchema: {
+        persona: z.string().min(1),
+        observed: z
+          .object({
+            role: shortText.optional(),
+            permissions: z.array(shortText).max(200).optional(),
+            settings: z.record(shortText, z.union([shortText, z.number(), z.boolean()])).optional(),
+            feature_flags: z.record(shortText, z.boolean()).optional(),
+            build: shortText.optional(),
+          })
+          .optional()
+          .describe('What the app showed for this persona, e.g. on a settings or profile page.'),
+        host: z.enum(['vscode-agent', 'claude-code', 'other']).optional(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async ({ persona, observed, host }) => {
+      try {
+        const captured = await captureEnvState(requireConfig(), workspace, {
+          persona,
+          // zod leaves absent keys undefined; drop them so optional fields stay absent.
+          ...(observed === undefined
+            ? {}
+            : { observed: JSON.parse(JSON.stringify(observed)) as Observed }),
+          ...(host === undefined ? {} : { host }),
+          lastSeededProfile: lastSeed?.profile ?? null,
+        });
+        return captured.ok
+          ? result({ ok: true, ...captured.capture })
+          : result({ ok: false, issues: captured.issues }, true);
       } catch (error) {
         return failure(error);
       }
