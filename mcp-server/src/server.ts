@@ -712,7 +712,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         const files =
           commitA === undefined || commitB === undefined
             ? undefined
-            : await changedFiles(workspace, commitA, commitB);
+            : await changedFiles(workspace, commitA, commitB, config.artifacts.root);
         const diff = diffRuns({ a, b, ...(files === undefined ? {} : { changedFiles: files }) });
         // Keep triage notes from an earlier diff of the same runs where the change is the same.
         const previous = readDiff(ctx, a.run_id, b.run_id);

@@ -28,7 +28,7 @@
       "type": "boolean"
     },
     "changed_files": {
-      "description": "Files changed between commit_a and commit_b (git diff --name-only), relative to the workspace. Uncommitted changes are not included.",
+      "description": "Files changed between commit_a and commit_b (git diff --name-only), relative to the workspace, leaving out the artifacts root. Uncommitted changes are not included.",
       "type": "array",
       "maxItems": 500,
       "items": { "type": "string", "minLength": 1 }

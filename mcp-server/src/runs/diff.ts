@@ -46,17 +46,32 @@ export async function changedFiles(
   workspace: string,
   commitA: string,
   commitB: string,
+  /** Workspace-relative folder left out, normally Tessa's artifacts root: its plans and exports are not app code. */
+  exclude?: string,
 ): Promise<string[] | undefined> {
   if (commitA === commitB) {
     return [];
   }
   try {
-    const { stdout } = await run('git', ['diff', '--name-only', '--relative', commitA, commitB], {
-      cwd: workspace,
-      windowsHide: true,
-      timeout: 10_000,
-      maxBuffer: 4 * 1024 * 1024,
-    });
+    const { stdout } = await run(
+      'git',
+      [
+        'diff',
+        '--name-only',
+        '--relative',
+        commitA,
+        commitB,
+        '--',
+        '.',
+        ...(exclude === undefined ? [] : [`:(exclude)${exclude}`]),
+      ],
+      {
+        cwd: workspace,
+        windowsHide: true,
+        timeout: 10_000,
+        maxBuffer: 4 * 1024 * 1024,
+      },
+    );
     return stdout
       .split('\n')
       .map((line) => line.trim())

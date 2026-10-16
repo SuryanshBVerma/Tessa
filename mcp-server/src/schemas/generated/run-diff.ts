@@ -39,7 +39,7 @@ dirty_b?: boolean
  */
 rerun_only?: boolean
 /**
- * Files changed between commit_a and commit_b (git diff --name-only), relative to the workspace. Uncommitted changes are not included.
+ * Files changed between commit_a and commit_b (git diff --name-only), relative to the workspace, leaving out the artifacts root. Uncommitted changes are not included.
  * 
  * @maxItems 500
  */

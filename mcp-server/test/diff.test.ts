@@ -1,9 +1,10 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { stringify } from 'yaml';
 import { renderDiffHtml } from '../src/report/diff.js';
-import { classify, diffRuns } from '../src/runs/diff.js';
+import { changedFiles, classify, diffRuns } from '../src/runs/diff.js';
 import { SCHEMAS_DIR, validate } from '../src/schemas/index.js';
 import { call, connect, tempWorkspace } from './helpers.js';
 
@@ -102,6 +103,36 @@ describe('diffRuns', () => {
     const other = { ...a, run_id: '20261016T110000Z', story_id: 'other' };
     expect(() => diffRuns({ a, b: other })).toThrow(/same story/);
     expect(() => diffRuns({ a, b: a })).toThrow(/two different runs/);
+  });
+});
+
+describe('changedFiles', () => {
+  it('lists files changed between commits, leaving out the artifacts root', async () => {
+    const repo = tempWorkspace({ 'app/a.ts': '1', 'ai-test-artifacts/plans/p.json': '1' });
+    // Identity through the environment, so no Git config is written.
+    const env = {
+      ...process.env,
+      GIT_AUTHOR_NAME: 'Test',
+      GIT_AUTHOR_EMAIL: 'test@example.invalid',
+      GIT_COMMITTER_NAME: 'Test',
+      GIT_COMMITTER_EMAIL: 'test@example.invalid',
+    };
+    const git = (...args: string[]) =>
+      execFileSync('git', args, { cwd: repo, env, encoding: 'utf8' }).trim();
+    git('init', '-q');
+    git('add', '.');
+    git('commit', '-q', '-m', 'one');
+    const first = git('rev-parse', 'HEAD');
+    writeFileSync(join(repo, 'app', 'a.ts'), '2');
+    writeFileSync(join(repo, 'ai-test-artifacts', 'plans', 'p.json'), '2');
+    git('commit', '-q', '-am', 'two');
+    const second = git('rev-parse', 'HEAD');
+    expect(await changedFiles(repo, first, second, 'ai-test-artifacts')).toEqual(['app/a.ts']);
+    expect(await changedFiles(repo, first, second)).toEqual([
+      'ai-test-artifacts/plans/p.json',
+      'app/a.ts',
+    ]);
+    expect(await changedFiles(repo, first, 'abcdef1')).toBeUndefined();
   });
 });
 
