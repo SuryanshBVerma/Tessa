@@ -1,0 +1,34 @@
+{
+  "name": "tessa-qa-monorepo",
+  "private": true,
+  "description": "Agentic tester for VS Code agent mode and Claude Code",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "mcp-server",
+    "testing/sample-app"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "ci": "npm run format:check && npm run typecheck && npm run lint && npm test && npm run build",
+    "sample": "npm run dev -w testing/sample-app"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "eslint": "10.12.0",
+    "eslint-config-prettier": "10.1.8",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.2",
+    "vitest": "5.0.5"
+  }
+}

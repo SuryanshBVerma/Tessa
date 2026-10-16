@@ -21,44 +21,44 @@ side-effecting operation. JSON schemas are the contracts between all parts.
 
 ## 2. Agents
 
-| Agent | Role | Output |
-| --- | --- | --- |
-| Orchestrator | Runs the workflow, enforces gates, delegates | Run summary |
-| Context builder | Builds/refreshes static map, merges KG, runs per-persona crawl | `context/` |
-| Planner | Story + context subgraph → scenarios | `plans/<story>/tests.json` |
-| Executor | Seeds, drives the browser, records steps and evidence | `runs/<ts>/results.json`, screenshots |
-| Triage | Classifies failures (app bug, test/selector, environment, data); interprets diffs | Triage notes in results |
-| Exporter | Adapts emitted code to repo conventions | `export/<framework>/` |
+| Agent           | Role                                                                              | Output                                |
+| --------------- | --------------------------------------------------------------------------------- | ------------------------------------- |
+| Orchestrator    | Runs the workflow, enforces gates, delegates                                      | Run summary                           |
+| Context builder | Builds/refreshes static map, merges KG, runs per-persona crawl                    | `context/`                            |
+| Planner         | Story + context subgraph → scenarios                                              | `plans/<story>/tests.json`            |
+| Executor        | Seeds, drives the browser, records steps and evidence                             | `runs/<ts>/results.json`, screenshots |
+| Triage          | Classifies failures (app bug, test/selector, environment, data); interprets diffs | Triage notes in results               |
+| Exporter        | Adapts emitted code to repo conventions                                           | `export/<framework>/`                 |
 
 Subagents get narrow context and return structured artifacts, not prose.
 
 ## 3. Skills
 
-| Skill | Purpose |
-| --- | --- |
-| `story-analysis` | Acceptance criteria, personas, edge cases, implicit requirements |
-| `ui-flow-discovery` | Using context queries to understand screens, guards, navigation |
+| Skill                 | Purpose                                                                                            |
+| --------------------- | -------------------------------------------------------------------------------------------------- |
+| `story-analysis`      | Acceptance criteria, personas, edge cases, implicit requirements                                   |
+| `ui-flow-discovery`   | Using context queries to understand screens, guards, navigation                                    |
 | `adapter-<framework>` | Where routes, guards, permissions, test IDs live (React Router first; Next.js, Angular, Vue later) |
-| `test-planning` | Neutral test format rules, coverage heuristics, persona × permission matrices, dedup |
-| `browser-execution` | Step protocol, waits, evidence capture, auth-pause protocol |
-| `failure-triage` | Failure classes and the evidence each needs |
-| `export-conventions` | Detecting and following page objects, fixtures, naming, layout |
+| `test-planning`       | Neutral test format rules, coverage heuristics, persona × permission matrices, dedup               |
+| `browser-execution`   | Step protocol, waits, evidence capture, auth-pause protocol                                        |
+| `failure-triage`      | Failure classes and the evidence each needs                                                        |
+| `export-conventions`  | Detecting and following page objects, fixtures, naming, layout                                     |
 
 Stack adapters are the main extension point: an adapter skill plus an extractor adapter in code.
 
 ## 4. MCP server: `tessa-mcp`
 
-| Group | Tools |
-| --- | --- |
-| Config | `load_config`, `validate_config`, `detect_stack` |
-| App lifecycle | `start_app`, `stop_app`, `health_check` |
-| Database | `seed_db(profile)`, `reset_db` — allowlisted scripts only, local hosts only |
-| Context | `build_static_map`, `context_freshness`, `routes_for_feature`, `components_for_route`, `permissions_for_route`, `api_calls_for_component`, `selectors_for_component` |
-| Auth | `await_manual_login(persona)`, `save_session_state` |
-| Evidence & results | `capture_env_state`, `record_step`, `write_results` |
-| Review | `render_report`, `serve_review`, `get_selection`, `stop_review` |
-| Runs | `list_runs`, `diff_runs`, `failed_test_ids` |
-| Export | `emit_tests(selection, target)`, `validate_export` |
+| Group              | Tools                                                                                                                                                                |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Config             | `load_config`, `validate_config`, `detect_stack`                                                                                                                     |
+| App lifecycle      | `start_app`, `stop_app`, `health_check`                                                                                                                              |
+| Database           | `seed_db(profile)`, `reset_db` — allowlisted scripts only, local hosts only                                                                                          |
+| Context            | `build_static_map`, `context_freshness`, `routes_for_feature`, `components_for_route`, `permissions_for_route`, `api_calls_for_component`, `selectors_for_component` |
+| Auth               | `await_manual_login(persona)`, `save_session_state`                                                                                                                  |
+| Evidence & results | `capture_env_state`, `record_step`, `write_results`                                                                                                                  |
+| Review             | `render_report`, `serve_review`, `get_selection`, `stop_review`                                                                                                      |
+| Runs               | `list_runs`, `diff_runs`, `failed_test_ids`                                                                                                                          |
+| Export             | `emit_tests(selection, target)`, `validate_export`                                                                                                                   |
 
 Internal modules: static extractor + framework adapters (ts-morph / tree-sitter), context query
 router, report renderer (fixed HTML/CSS/JS template), review server, emitters per target, run diff
@@ -141,14 +141,14 @@ host model. If the host lacks per-agent models, everything inherits and the repo
 
 ## 11. Commands
 
-| Command | Action |
-| --- | --- |
-| `/tessa-init` | Scaffold config, detect stack, write model settings into agent files |
-| `/tessa-refresh-context` | Rebuild the frontend map and run the crawl |
-| `/tessa-test-story <id or text>` | Full flow (section 1) |
-| `/tessa-rerun-failed [run]` | Rerun failed tests only |
-| `/tessa-diff <runA> <runB>` | Compare two runs |
-| `/tessa-export [run]` | Open review and export selected tests |
+| Command                          | Action                                                               |
+| -------------------------------- | -------------------------------------------------------------------- |
+| `/tessa-init`                    | Scaffold config, detect stack, write model settings into agent files |
+| `/tessa-refresh-context`         | Rebuild the frontend map and run the crawl                           |
+| `/tessa-test-story <id or text>` | Full flow (section 1)                                                |
+| `/tessa-rerun-failed [run]`      | Rerun failed tests only                                              |
+| `/tessa-diff <runA> <runB>`      | Compare two runs                                                     |
+| `/tessa-export [run]`            | Open review and export selected tests                                |
 
 ## 12. Schemas
 
@@ -159,14 +159,14 @@ host model. If the host lacks per-agent models, everything inherits and the repo
 
 ```yaml
 app:
-  start: "npm run dev"
-  url: "http://localhost:3000"
-  stack: react-router            # selects adapter
+  start: 'npm run dev'
+  url: 'http://localhost:3000'
+  stack: react-router # selects adapter
 db:
   allowed_hosts: [localhost, 127.0.0.1]
   profiles:
-    default: ["scripts/seed/base.sql", "scripts/seed/users.sql"]
-    admin-heavy: ["scripts/seed/base.sql", "scripts/seed/admins.sql"]
+    default: ['scripts/seed/base.sql', 'scripts/seed/users.sql']
+    admin-heavy: ['scripts/seed/base.sql', 'scripts/seed/admins.sql']
 auth:
   mode: manual
 personas:
@@ -175,34 +175,34 @@ personas:
   - name: admin
     seed_profile: admin-heavy
 artifacts:
-  root: "ai-test-artifacts"
+  root: 'ai-test-artifacts'
 context:
   knowledge_graph:
     enabled: true
-    mode: hybrid                 # builtin | external | hybrid
-    mcp_server: "frontend-kg"
-    query_mapping: ".tessa/kg-mapping.yaml"
+    mode: hybrid # builtin | external | hybrid
+    mcp_server: 'frontend-kg'
+    query_mapping: '.tessa/kg-mapping.yaml'
     max_staleness_commits: 20
   static_map:
     adapter: react-router
-    include: ["src/**"]
-    exclude: ["**/*.test.*", "**/*.stories.*"]
+    include: ['src/**']
+    exclude: ['**/*.test.*', '**/*.stories.*']
   runtime_crawl:
     enabled: true
     max_depth: 4
-  hints: "ai-test-artifacts/context/hints.md"
+  hints: 'ai-test-artifacts/context/hints.md'
 review:
-  mode: local-server             # local-server | static
+  mode: local-server # local-server | static
   show_code_preview: true
   show_overlap: true
 export:
-  target: auto                   # auto | playwright-ts | playwright-dotnet | cypress-ts | selenium-csharp
-  detect_from: [package.json, "*.csproj", pom.xml]
+  target: auto # auto | playwright-ts | playwright-dotnet | cypress-ts | selenium-csharp
+  detect_from: [package.json, '*.csproj', pom.xml]
   conventions:
     adapt_to_codebase: true
-    page_objects_dir: "tests/pages"
-    test_dir: "tests/e2e"
-    naming: "{feature}.{scenario}.spec"
+    page_objects_dir: 'tests/pages'
+    test_dir: 'tests/e2e'
+    naming: '{feature}.{scenario}.spec'
   validate:
     compile: true
     run_once: true
@@ -240,7 +240,7 @@ commands/      tessa-init, tessa-refresh-context, tessa-test-story, tessa-rerun-
 mcp-server/    src/{config,app,db,context,auth,results,review,runs,export}, emitters/, extractors/, templates/report/
 schemas/       *.schema.json
 templates/     config.yaml, kg-mapping.yaml, hints.md, gitignore
-sample-app/    test target used throughout development
+testing/       sample-app/ and other test targets used during development
 docs/          ARCHITECTURE.md
 ```
 

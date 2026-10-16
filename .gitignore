@@ -3,3 +3,23 @@ Context/
 CLAUDE.md
 docs/PLAN.md
 docs/DECISIONS.md
+
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local environment files may hold credentials
+.env
+.env.*
+!.env.example
+
+# Tessa run output may hold screenshots and session state
+ai-test-artifacts/runs/
+ai-test-artifacts/diffs/
+ai-test-artifacts/.session/
+
+# React Router generated output
+.react-router/
+build/

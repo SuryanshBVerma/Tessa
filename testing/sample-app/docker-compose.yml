@@ -1,0 +1,24 @@
+# Local Postgres for the sample app. The port binds to 127.0.0.1 only.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: tessa_sample
+      POSTGRES_USER: tessa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in testing/sample-app/.env}
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # Runs once, when the volume is first created. `npm run db:seed` resets later.
+      - ./scripts/seed/base.sql:/docker-entrypoint-initdb.d/01-base.sql:ro
+      - ./scripts/seed/users.sql:/docker-entrypoint-initdb.d/02-users.sql:ro
+      - ./scripts/seed/tickets.sql:/docker-entrypoint-initdb.d/03-tickets.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tessa -d tessa_sample']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  db-data:
