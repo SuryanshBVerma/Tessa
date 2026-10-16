@@ -20,8 +20,13 @@ agents and skills call these tools instead of running shell commands or editing 
 | `begin_run`         | no               | Creates `runs/<run_id>/` for an approved plan and returns its tests with indexed steps                                                                                              |
 | `record_step`       | no               | Records one step's outcome and copies in its screenshot (PNG, JPEG or WebP only, checked by content)                                                                                |
 | `write_results`     | no               | Builds `results.json`; status, failures, attempts and quality signals are computed from the recorded steps                                                                          |
+| `render_report`     | no               | Renders `report.html` from a fixed template; cards are built with DOM APIs from embedded JSON, under a nonce-based CSP                                                              |
+| `serve_review`      | no               | Serves the report on `127.0.0.1` at a random port behind a per-session path token; checks Host and Origin, stops after the idle timeout                                             |
+| `get_selection`     | yes              | Returns the reviewer's `selection.json`, optionally waiting up to 120 s for Export                                                                                                  |
+| `record_selection`  | no               | Saves a selection pasted from a report opened from disk (static fallback)                                                                                                           |
+| `stop_review`       | no               | Stops the review server                                                                                                                                                             |
 
-Later phases add review, run diff and export tools
+Later phases add context, run diff and export tools
 (see [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)).
 
 ## Run it

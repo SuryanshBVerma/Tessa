@@ -1,0 +1,432 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f6f6f8;
+  --card: #ffffff;
+  --fg: #1d1d22;
+  --muted: #62626d;
+  --border: #dcdce3;
+  --accent: #2f5bd3;
+  --passed: #13753e;
+  --failed: #b42318;
+  --error: #9a4b00;
+  --skipped: #62626d;
+  --failed-bg: #fdecea;
+  --code-bg: #f0f0f4;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141418;
+    --card: #1d1d23;
+    --fg: #ececf1;
+    --muted: #a3a3ae;
+    --border: #33333c;
+    --accent: #8aa8ff;
+    --passed: #5fd394;
+    --failed: #ff8a80;
+    --error: #ffb35c;
+    --skipped: #a3a3ae;
+    --failed-bg: #3a1d1b;
+    --code-bg: #26262e;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  padding-bottom: 5rem;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+  margin: 0;
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.5rem 1rem 1rem;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  margin: 0 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.meta {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.summary {
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+}
+
+.summary div {
+  text-align: center;
+}
+
+.summary dt {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.summary dd {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0 1rem 1rem;
+}
+
+.toolbar label {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.toolbar-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+select,
+button,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+select,
+button {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+#cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+}
+
+.card[hidden] {
+  display: none;
+}
+
+.card.is-selected {
+  outline: 2px solid var(--accent);
+}
+
+.card-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.card-head input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.15rem;
+}
+
+.card-title h2 {
+  font-size: 1.05rem;
+}
+
+.card-ids {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.status-passed {
+  color: var(--passed);
+}
+
+.status-failed {
+  color: var(--failed);
+}
+
+.status-error {
+  color: var(--error);
+}
+
+.status-skipped {
+  color: var(--skipped);
+}
+
+.duration {
+  display: block;
+  text-align: right;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.intent {
+  margin: 0.6rem 0 0.8rem;
+}
+
+.section-title {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0.9rem 0 0.4rem;
+}
+
+.env {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.2rem 1rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.env dt {
+  color: var(--muted);
+}
+
+.env dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.flow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  gap: 0.6rem;
+  align-items: start;
+  padding: 0.4rem;
+  border-radius: 6px;
+}
+
+.step-index {
+  font-weight: 600;
+  color: var(--muted);
+  text-align: right;
+}
+
+.step-detail {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-family: ui-monospace, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.step.is-failed {
+  background: var(--failed-bg);
+}
+
+.thumb img {
+  width: 7rem;
+  height: 4.5rem;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: block;
+}
+
+.failure {
+  margin-top: 0.6rem;
+  border-left: 3px solid var(--failed);
+  padding: 0.4rem 0 0.4rem 0.8rem;
+}
+
+.failure .compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin: 0.4rem 0;
+}
+
+.failure .compare div {
+  background: var(--code-bg);
+  border-radius: 6px;
+  padding: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.failure img {
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-top: 0.4rem;
+}
+
+.signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.signals dt {
+  color: var(--muted);
+  display: inline;
+}
+
+.signals dd {
+  display: inline;
+  margin: 0 0 0 0.3rem;
+}
+
+details {
+  margin-top: 0.8rem;
+}
+
+summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+pre {
+  background: var(--code-bg);
+  padding: 0.75rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.8rem;
+}
+
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+
+.footer-target {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-right: auto;
+}
+
+dialog {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--fg);
+  max-width: 36rem;
+  width: calc(100% - 2rem);
+}
+
+dialog textarea {
+  width: 100%;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 40rem) {
+  .failure .compare {
+    grid-template-columns: 1fr;
+  }
+
+  .step {
+    grid-template-columns: 1.5rem 1fr;
+  }
+
+  .thumb {
+    grid-column: 2;
+  }
+}
+
+.step .pill {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+}

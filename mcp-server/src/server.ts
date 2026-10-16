@@ -7,6 +7,8 @@ import { SeedError, seedProfile, type SeedResult } from './db/seed.js';
 import { detectStack, loadConfig, type ConfigIssue, type ResolvedConfig } from './config/index.js';
 import { initWorkspace } from './init/index.js';
 import { captureEnvState, readGitState, type Observed } from './results/env.js';
+import { loadResults, renderReport } from './report/render.js';
+import { buildSelection, readSelection, ReviewServer, writeSelection } from './report/server.js';
 import { buildResults } from './runs/results.js';
 import { importScreenshot } from './runs/screenshots.js';
 import {
@@ -78,6 +80,7 @@ export interface ServerOptions {
 export function createServer({ workspace }: ServerOptions): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
   const app = new AppManager(workspace);
+  const review = new ReviewServer();
   // Never leave the app under test running after the host disconnects or the server exits.
   const onExit = () => {
     app.dispose();
@@ -86,6 +89,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
   server.server.onclose = () => {
     process.off('exit', onExit);
     app.dispose();
+    void review.stop();
   };
 
   let lastSeed: SeedResult | null = null;
@@ -537,6 +541,142 @@ export function createServer({ workspace }: ServerOptions): McpServer {
             ...(t.failure === undefined ? {} : { failure: t.failure }),
           })),
         });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'render_report',
+    {
+      title: 'Render the report',
+      description:
+        'Render runs/<run_id>/report.html from results.json and the plan, using the fixed report template. The file works opened from disk; serve_review also renders it.',
+      inputSchema: { run_id: z.string() },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ run_id }) => {
+      try {
+        return result({
+          ok: true,
+          ...renderReport({ config: requireConfig(), workspace }, run_id),
+        });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'serve_review',
+    {
+      title: 'Serve the review page',
+      description:
+        'Render the report and serve it on 127.0.0.1 at a random port behind a per-session token. Give the user the URL; they select tests and press Export, then call get_selection. The server stops after review.idle_timeout_minutes without requests, on stop_review, or when the session ends. Only one review is served at a time.',
+      inputSchema: { run_id: z.string() },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async ({ run_id }) => {
+      try {
+        const info = await review.start({ config: requireConfig(), workspace }, run_id);
+        return result({
+          ok: true,
+          ...info,
+          note: 'The URL contains a session token. Open it only on this machine and do not share it.',
+        });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'get_selection',
+    {
+      title: 'Get the reviewer selection',
+      description:
+        'Return the tests the reviewer selected for a run (selection.json). With wait_seconds, waits that long for the reviewer to press Export on the review page.',
+      inputSchema: {
+        run_id: z.string(),
+        wait_seconds: z.number().int().min(0).max(120).optional(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async ({ run_id, wait_seconds }) => {
+      try {
+        const ctx = { config: requireConfig(), workspace };
+        const existing = readSelection(ctx, run_id);
+        if (existing !== null) {
+          return result({ ok: true, status: 'received', selection: existing });
+        }
+        if (wait_seconds !== undefined && wait_seconds > 0 && review.active?.run_id === run_id) {
+          const posted = await review.waitForSelection(wait_seconds * 1000);
+          if (posted !== null) {
+            return result({ ok: true, status: 'received', selection: posted });
+          }
+        }
+        return result({
+          ok: true,
+          status: 'waiting',
+          serving: review.active?.run_id === run_id,
+          message: 'No selection yet. The reviewer has not pressed Export.',
+        });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'record_selection',
+    {
+      title: 'Record a pasted selection',
+      description:
+        'Save a selection the user pasted from a report opened from disk (the static fallback). The test ids are checked against the run.',
+      inputSchema: {
+        run_id: z.string(),
+        selected_test_ids: z.array(z.string().min(1)).min(1),
+        target: z
+          .enum([
+            'playwright-ts',
+            'playwright-dotnet',
+            'cypress-ts',
+            'selenium-csharp',
+            'selenium-java',
+          ])
+          .optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    ({ run_id, selected_test_ids, target }) => {
+      try {
+        const ctx = { config: requireConfig(), workspace };
+        const selection = buildSelection(
+          loadResults(ctx, run_id),
+          { selected_test_ids, ...(target === undefined ? {} : { target }) },
+          'static',
+        );
+        writeSelection(ctx, selection);
+        return result({ ok: true, selection });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'stop_review',
+    {
+      title: 'Stop the review server',
+      description: 'Stop serving the review page. The report file stays on disk.',
+      inputSchema: {},
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    async () => {
+      try {
+        const stopped = await review.stop();
+        return result({ ok: true, status: stopped ? 'stopped' : 'not_running' });
       } catch (error) {
         return failure(error);
       }

@@ -58,5 +58,23 @@ export default tseslint.config(
     files: ['**/*.js'],
     ...tseslint.configs.disableTypeChecked,
   },
+  {
+    // The report page runs in the browser, not Node.
+    files: ['mcp-server/templates/report/*.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        location: 'readonly',
+        navigator: 'readonly',
+        fetch: 'readonly',
+        Blob: 'readonly',
+        URL: 'readonly',
+        CSS: 'readonly',
+        Event: 'readonly',
+      },
+    },
+  },
   prettier,
 );
