@@ -21,6 +21,8 @@ describe('tessa-mcp server', () => {
       'health_check',
       'init_workspace',
       'load_config',
+      'reset_db',
+      'seed_db',
       'start_app',
       'stop_app',
       'validate_config',

@@ -2,6 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import * as z from 'zod';
 import { AppManager, checkHealth } from './app/lifecycle.js';
+import { UnsafeDatabaseError } from './db/guard.js';
+import { SeedError, seedProfile, type SeedResult } from './db/seed.js';
 import { detectStack, loadConfig, type ConfigIssue, type ResolvedConfig } from './config/index.js';
 import { initWorkspace } from './init/index.js';
 import { SERVER_NAME, SERVER_VERSION } from './version.js';
@@ -34,6 +36,19 @@ function failure(error: unknown): CallToolResult {
   if (error instanceof ConfigError) {
     return result({ ok: false, error: error.message, issues: error.issues }, true);
   }
+  if (error instanceof UnsafeDatabaseError) {
+    return result({ ok: false, refused: true, error: error.message }, true);
+  }
+  if (error instanceof SeedError) {
+    return result(
+      {
+        ok: false,
+        error: error.message,
+        ...(error.file === undefined ? {} : { file: error.file }),
+      },
+      true,
+    );
+  }
   // Only the message: stack traces can carry local paths and are no use to the agent.
   const message = error instanceof Error ? error.message : String(error);
   return result({ ok: false, error: message }, true);
@@ -56,6 +71,8 @@ export function createServer({ workspace }: ServerOptions): McpServer {
     process.off('exit', onExit);
     app.dispose();
   };
+
+  let lastSeed: SeedResult | null = null;
 
   const requireConfig = (): ResolvedConfig => {
     const loaded = loadConfig({ workspace });
@@ -243,6 +260,49 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           managed: app.running,
           ...(app.pid === undefined ? {} : { pid: app.pid }),
         });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'seed_db',
+    {
+      title: 'Seed the database',
+      description:
+        'Apply a seed profile from db.profiles, in order, in one transaction. Only the listed .sql files run, and only against a local host in db.allowed_hosts. The database URL comes from the db.url_env variable and is never returned.',
+      inputSchema: {
+        profile: z.string().min(1).describe('Seed profile name from db.profiles.'),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    },
+    async ({ profile }) => {
+      try {
+        lastSeed = await seedProfile(requireConfig(), workspace, profile);
+        return result({ ok: true, ...lastSeed });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'reset_db',
+    {
+      title: 'Reset the database',
+      description:
+        'Return the database to a known state by re-applying a seed profile: the one given, else the last one seeded in this session, else "default". Same safety rules as seed_db.',
+      inputSchema: {
+        profile: z.string().min(1).optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+    },
+    async ({ profile }) => {
+      try {
+        const chosen = profile ?? lastSeed?.profile ?? 'default';
+        lastSeed = await seedProfile(requireConfig(), workspace, chosen);
+        return result({ ok: true, reset_to: chosen, ...lastSeed });
       } catch (error) {
         return failure(error);
       }
