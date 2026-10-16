@@ -100,6 +100,12 @@ Use the plan's strategy first:
 
 `exact: false` (the default) allows case-insensitive substring matches for names and text.
 
+The host browser's element search usually matches by accessible name, so it can return several
+elements for one plan target (a "New ticket" link in the navigation and another on the page).
+When it does, confirm which one carries the plan's attribute (for `testid`, its
+`data-testid`) before acting, for example by reading the page structure or checking the
+element's attributes. Never click the first match on the assumption it is the right one.
+
 If the plan's target is not found but exactly one element clearly matches the step's intent
 (same label, same role, same position in the flow), use it and pass `selector_used` describing
 what you used. If there is no match, or more than one plausible match, fail the step. Never
@@ -132,9 +138,13 @@ Call `record_step` once per step, as soon as the step finishes:
 - `status`: `passed`, `failed`, or `skipped`.
 - `duration_ms`: roughly how long the step took.
 - On failure: `expected` (the step's `expected`, or what the assertion wanted), `actual` (what
-  you saw, in plain words), and `error` (one line on why it failed).
+  you saw, in plain words), and `error` (one line on why it failed). Some evidence never shows in
+  a screenshot, such as the browser's own form-validation tooltip; when you can read it (for
+  example the field's validation message), put it in `actual`.
 - `screenshot`: take one after every step that changes the page (`navigate`, `click`, `select`,
-  `check`, `uncheck`) and after every `assert`, and always on failure. Pass the absolute path
+  `check`, `uncheck`) and after every `assert`, and always on failure. Take it once the page has
+  settled (see Waits): a screenshot taken straight after a click often still shows the previous
+  page. Check the URL or a landmark on the new page first. Pass the absolute path
   where the host browser saved the image, as `{ "path": "..." }`. If the browser gives you the
   image bytes as base64 instead, pass `{ "data_base64": "..." }`. If it can do neither, record
   the step without a screenshot.
