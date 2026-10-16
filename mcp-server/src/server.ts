@@ -20,6 +20,7 @@ import { UnsafeDatabaseError } from './db/guard.js';
 import { emitTests, ExportError, updateExportFile } from './export/export.js';
 import { applyHandoff, proposeHandoff } from './export/handoff.js';
 import { SessionCapture, validateExport } from './export/validate.js';
+import { modelsForRun, ROLES } from './hosts/models.js';
 import { SeedError, seedProfile, type SeedResult } from './db/seed.js';
 import { detectStack, loadConfig, type ConfigIssue, type ResolvedConfig } from './config/index.js';
 import { initWorkspace } from './init/index.js';
@@ -418,7 +419,11 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           const state = loadRun(ctx, run_id);
           state.env_states[persona] = captured.capture.env_state;
           const { host: capturedHost, ...environment } = captured.capture.environment;
-          state.environment = environment;
+          // Keep what begin_run recorded that the capture does not know, such as models.
+          state.environment = {
+            ...environment,
+            ...(state.environment.models === undefined ? {} : { models: state.environment.models }),
+          };
           if (capturedHost !== undefined) {
             state.host = capturedHost;
           }
@@ -451,10 +456,16 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           .optional()
           .describe('A completed run of the same story whose failed tests to rerun.'),
         host: hostEnum.optional().describe('The agent host running this session.'),
+        models: z
+          .partialRecord(z.enum(ROLES), z.string().max(120))
+          .optional()
+          .describe(
+            'Models you know were used, by role (e.g. your own model as executor). Others are taken from config.',
+          ),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },
-    async ({ story, test_ids, rerun_of, host }) => {
+    async ({ story, test_ids, rerun_of, host, models }) => {
       try {
         const config = requireConfig();
         const ctx = { config, workspace };
@@ -484,7 +495,11 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         const { state, tests } = createRun(
           ctx,
           plan,
-          { app_url: config.app.url, ...(git ?? {}) },
+          {
+            app_url: config.app.url,
+            ...(git ?? {}),
+            models: modelsForRun(config, host ?? 'other', models ?? {}),
+          },
           {
             ...(ids === undefined ? {} : { testIds: ids }),
             ...(host === undefined ? {} : { host }),

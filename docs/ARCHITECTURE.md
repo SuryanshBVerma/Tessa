@@ -150,6 +150,13 @@ configured model into each agent definition file, so config stays the single sou
 use and vision; exporter and context builder can use a mid-tier model; orchestrator inherits the
 host model. If the host lacks per-agent models, everything inherits and the report records what was used.
 
+In Claude Code, `auto` becomes a model alias (`opus` for planner and triage, `sonnet` for the
+executor, exporter and context builder, `inherit` for the orchestrator), so agent files never
+pin a version that goes stale. In VS Code, model names are picker labels that vary by account,
+so `auto` leaves the field out and the agent uses the model the user picked. An explicit value in
+`models` is written as given. `begin_run` records the resolved models, overlaid with any model an
+agent reports for itself, in `results.json`, and the report header shows them.
+
 ## 11. Commands
 
 | Command                            | Action                                                               |
