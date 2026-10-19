@@ -15,6 +15,9 @@ before 1.0, each minor version is one phase of the plan.
   for Angular Material, overlays and reactive forms.
 - The frontend map follows `tsconfig` path aliases for every stack.
 - `detect_stack` suggests the stack's usual dev server URL (`url_hint`).
+- Monorepos: `detect_stack` finds the frontend in a subfolder (`app_root`) and reports backends
+  beside it (.NET Web, Node, Spring Boot); `/tessa-init` sets `app.cwd` to the app's folder, and
+  the frontend map reads routes, source globs and tsconfig aliases from there.
 - The planner, executor and context builder follow the adapter skill for the app's stack.
 
 ## 0.9.1 — 2026-10-16

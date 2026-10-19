@@ -112,20 +112,38 @@ export async function buildStaticMap(
   if (adapter === undefined) {
     throw new ContextError(`no built-in adapter for "${settings.adapter}"`);
   }
-  const found = adapter.findRoutes(ctx.workspace);
-  const warnings = [...found.warnings];
+  // The app's folder (app.cwd): a subfolder in a monorepo. Routes, source globs and tsconfig
+  // aliases are read from there; every path in the map stays relative to the workspace.
+  const appRoot = posix.normalize(toPosix(ctx.config.app.cwd));
+  const appDir = resolveInside(ctx.workspace, appRoot);
+  const at = (path: string) => (appRoot === '.' ? path : posix.join(appRoot, path));
+
+  const inApp = adapter.findRoutes(appDir);
+  const found = {
+    ...inApp,
+    routes: inApp.routes.map((r) => ({
+      ...r,
+      id: at(r.id),
+      file: at(r.file),
+      children: r.children.map(at),
+      ...(r.parent === undefined ? {} : { parent: at(r.parent) }),
+    })),
+    rootModule: inApp.rootModule ? at(inApp.rootModule) : null,
+  };
+  const warnings = found.warnings.map((w) => (appRoot === '.' ? w : `${appRoot}/: ${w}`));
 
   const included = new Set(
     globSync(settings.include, {
-      cwd: ctx.workspace,
+      cwd: appDir,
       exclude: (file: string) =>
         settings.exclude.some((pattern) => posix.matchesGlob(toPosix(file), pattern)),
     })
       .map(toPosix)
-      .filter((file) => SOURCE.test(file) && !file.split('/').includes('node_modules')),
+      .filter((file) => SOURCE.test(file) && !file.split('/').includes('node_modules'))
+      .map(at),
   );
 
-  const aliases = loadAliases(ctx.workspace);
+  const aliases = loadAliases(appDir).map((a) => ({ ...a, targets: a.targets.map(at) }));
   const cachedMap = options.force === true ? null : loadMap(ctx);
   const previous =
     cachedMap !== null &&
@@ -220,6 +238,7 @@ export async function buildStaticMap(
     extractor_version: EXTRACTOR_VERSION,
     built_at: new Date().toISOString(),
     ...(git === null ? {} : { commit: git.commit }),
+    ...(appRoot === '.' ? {} : { app_root: appRoot }),
     include: settings.include,
     exclude: settings.exclude,
     routes: found.routes,

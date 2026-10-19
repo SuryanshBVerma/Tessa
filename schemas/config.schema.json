@@ -49,7 +49,7 @@
           "minLength": 1
         },
         "cwd": {
-          "description": "Directory to run the start command in.",
+          "description": "The app's folder, relative to the repository root: where the start command runs and where context.static_map reads source. Set it when the app is in a subfolder of a monorepo.",
           "$ref": "#/$defs/relativePath"
         },
         "url": {
@@ -171,6 +171,7 @@
           "properties": {
             "adapter": { "$ref": "#/$defs/name" },
             "include": {
+              "description": "Source globs, relative to app.cwd (or the repository root).",
               "type": "array",
               "items": { "$ref": "#/$defs/glob" },
               "default": ["src/**"]

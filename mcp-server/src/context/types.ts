@@ -90,6 +90,8 @@ export interface FrontendMap {
   built_at: string;
   /** HEAD when the map was built; absent outside Git. */
   commit?: string;
+  /** The app's folder (app.cwd) when it is not the workspace root; include and exclude are relative to it. */
+  app_root?: string;
   include: string[];
   exclude: string[];
   routes: RouteNode[];

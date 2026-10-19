@@ -36,7 +36,7 @@ export interface App {
  */
 start: string
 /**
- * Directory to run the start command in.
+ * The app's folder, relative to the repository root: where the start command runs and where context.static_map reads source. Set it when the app is in a subfolder of a monorepo.
  */
 cwd?: string
 /**
@@ -102,6 +102,9 @@ max_staleness_commits?: number
 }
 static_map?: {
 adapter?: Name
+/**
+ * Source globs, relative to app.cwd (or the repository root).
+ */
 include?: Glob[]
 exclude?: Glob[]
 }

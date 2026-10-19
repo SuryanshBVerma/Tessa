@@ -65,13 +65,15 @@ export function buildConfigText(
   set(['app', 'start'], app.start ?? detected.start_command ?? undefined);
   set(['app', 'url'], app.url);
   set(['app', 'stack'], app.stack ?? detected.stack?.name);
-  set(['app', 'cwd'], app.cwd);
+  // In a monorepo the app sits in a subfolder; the start command and the static map use it.
+  const appRoot = app.cwd ?? (detected.app_root === '.' ? undefined : detected.app_root);
+  set(['app', 'cwd'], appRoot);
   set(['db', 'profiles'], options.seed_profiles);
   set(['personas'], options.personas);
   set(['artifacts', 'root'], options.artifacts_root);
   set(
     ['context', 'static_map', 'include'],
-    options.source_include ?? guessSourceInclude(workspace),
+    options.source_include ?? guessSourceInclude(workspace, appRoot),
   );
 
   const exportTarget =
@@ -87,11 +89,17 @@ export function buildConfigText(
 
 const SOURCE_DIRS = ['src', 'app'];
 
-function guessSourceInclude(workspace: string | undefined): string[] | undefined {
+/** Source globs, relative to the app's folder (app.cwd), as the static map reads them. */
+function guessSourceInclude(
+  workspace: string | undefined,
+  appRoot: string | undefined,
+): string[] | undefined {
   if (workspace === undefined) {
     return undefined;
   }
-  const dir = SOURCE_DIRS.find((name) => existsSync(resolveInside(workspace, name)));
+  const dir = SOURCE_DIRS.find((name) =>
+    existsSync(resolveInside(workspace, appRoot === undefined ? name : `${appRoot}/${name}`)),
+  );
   return dir === undefined ? undefined : [`${dir}/**`];
 }
 

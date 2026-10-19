@@ -26,6 +26,12 @@ the export targets.
 - If `stack` is null or `adapter_available` is false, tell the user Tessa has no adapter for
   this stack yet and ask whether to continue with a config they will finish by hand.
 - If `export_target_ambiguous` is true, ask the user which export target to use.
+- If `app_root` is not `.`, the app is in that subfolder (a monorepo). Tell the user;
+  `init_workspace` sets `app.cwd` to it, so the start command runs there and the frontend map
+  reads source from there.
+- If `backends` lists any, say that the backend must be running during a test run: the user
+  starts it, or `app.start` runs one script that starts both. Seed profiles must point at SQL
+  scripts for the backend's database, and that database must be a local Postgres.
 
 ## 2. Gather what detection cannot know
 

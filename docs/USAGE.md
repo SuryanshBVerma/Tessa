@@ -128,7 +128,7 @@ or ask the agent to call `validate_config`, to check it.
 | Key                                             | Default                              | Meaning                                                                                                                  |
 | ----------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | `app.start`                                     | (required)                           | Command that starts the app. Run without a shell, so no `&&`, pipes or redirects                                         |
-| `app.cwd`                                       | repository root                      | Folder to run the start command in                                                                                       |
+| `app.cwd`                                       | repository root                      | The app's folder in a monorepo: where the start command runs and the map reads source                                    |
 | `app.url`                                       | (required)                           | Base URL; must be `localhost`, `127.0.0.1` or `[::1]`                                                                    |
 | `app.stack`                                     | (required)                           | Stack adapter, for example `react-router`                                                                                |
 | `app.health_path`                               | `/`                                  | Path polled until the app answers; any status below 500 counts                                                           |
@@ -140,7 +140,7 @@ or ask the agent to call `validate_config`, to check it.
 | `auth.login_path`                               | `/login`                             | Where Tessa sends you to sign in                                                                                         |
 | `personas`                                      | (required)                           | One entry per role: `name` and the `seed_profile` it needs                                                               |
 | `artifacts.root`                                | `ai-test-artifacts`                  | Where Tessa writes everything                                                                                            |
-| `context.static_map.include`, `exclude`         | `src/**`, none                       | Source files the map reads                                                                                               |
+| `context.static_map.include`, `exclude`         | `src/**`, none                       | Source files the map reads, relative to `app.cwd`                                                                        |
 | `context.runtime_crawl.enabled`                 | `true`                               | Allow `/tessa-refresh-context crawl`                                                                                     |
 | `context.knowledge_graph.mode`                  | `builtin`                            | `builtin` (Tessa's map), `external` (your team's graph) or `hybrid`                                                      |
 | `context.hints`                                 | `<root>/context/hints.md`            | The hand-written hints file                                                                                              |
