@@ -2,6 +2,31 @@
 // Regenerate with: npm run schemas:types -w mcp-server
 
 
+export type Db = {
+/**
+ * Seed the database before each test. false: Tessa never touches the database, tests run on the data the app already has, and allowed_hosts and profiles are not needed.
+ */
+enabled?: boolean
+/**
+ * Environment variable that holds the database URL. The URL itself never goes in config.
+ */
+url_env?: string
+/**
+ * Hosts seeding may connect to. Only local hosts are accepted.
+ * 
+ * @minItems 1
+ */
+allowed_hosts?: [("localhost" | "127.0.0.1" | "::1"), ...(("localhost" | "127.0.0.1" | "::1"))[]]
+/**
+ * Seed profiles: name -> ordered list of SQL files.
+ */
+profiles?: {
+/**
+ * @minItems 1
+ */
+[k: string]: [RelativePath, ...(RelativePath)[]] | undefined
+}
+}
 /**
  * Path relative to the repository root. Must not escape it.
  */
@@ -53,27 +78,6 @@ stack: string
 health_path?: string
 start_timeout_seconds?: number
 }
-export interface Db {
-/**
- * Environment variable that holds the database URL. The URL itself never goes in config.
- */
-url_env?: string
-/**
- * Hosts seeding may connect to. Only local hosts are accepted.
- * 
- * @minItems 1
- */
-allowed_hosts: [("localhost" | "127.0.0.1" | "::1"), ...(("localhost" | "127.0.0.1" | "::1"))[]]
-/**
- * Seed profiles: name -> ordered list of SQL files.
- */
-profiles: {
-/**
- * @minItems 1
- */
-[k: string]: [RelativePath, ...(RelativePath)[]] | undefined
-}
-}
 export interface Auth {
 /**
  * Tessa never automates login; the human always signs in.
@@ -84,7 +88,10 @@ login_path?: string
 export interface Persona {
 name: Name
 description?: string
-seed_profile: Name
+/**
+ * Seed profile this persona needs. Required when seeding is on; with seeding off it defaults to "none".
+ */
+seed_profile?: string
 }
 export interface Artifacts {
 /**

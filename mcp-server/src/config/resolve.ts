@@ -14,9 +14,17 @@ type KnowledgeGraph = NonNullable<NonNullable<TessaConfig['context']>['knowledge
 export interface ResolvedConfig {
   version: 1;
   app: Omit<DeepRequired<TessaConfig['app']>, 'cwd'> & { cwd: string };
-  db: DeepRequired<TessaConfig['db']>;
+  db: {
+    /** False: Tessa never seeds or resets the database; seed_db and reset_db only report that. */
+    enabled: boolean;
+    url_env: string;
+    allowed_hosts: string[];
+    /** With seeding off, also holds NO_SEED_PROFILE, which runs no files. */
+    profiles: Record<string, string[]>;
+  };
   auth: DeepRequired<TessaConfig['auth']>;
-  personas: TessaConfig['personas'];
+  /** Every persona with a seed profile: its own, or NO_SEED_PROFILE when seeding is off. */
+  personas: { name: string; description?: string; seed_profile: string }[];
   artifacts: DeepRequired<NonNullable<TessaConfig['artifacts']>>;
   context: {
     knowledge_graph: Pick<KnowledgeGraph, 'mcp_server' | 'query_mapping'> &
@@ -43,6 +51,7 @@ export interface ResolvedConfig {
 
 // Keep in step with the "default" keywords in schemas/config.schema.json; a test checks this.
 export const DEFAULTS = {
+  dbEnabled: true,
   dbUrlEnv: 'DATABASE_URL',
   healthPath: '/',
   startTimeoutSeconds: 60,
@@ -66,7 +75,17 @@ export const DEFAULTS = {
   model: 'auto',
 } as const;
 
+/**
+ * The seed profile of a persona or test when seeding is off: it runs no files, so plans, results
+ * and exports keep their shape.
+ */
+export const NO_SEED_PROFILE = 'none';
+
 export function resolveConfig(config: TessaConfig): ResolvedConfig {
+  const seeding = config.db.enabled ?? DEFAULTS.dbEnabled;
+  const definedProfiles = Object.fromEntries(
+    Object.entries(config.db.profiles ?? {}).map(([name, files]) => [name, [...(files ?? [])]]),
+  );
   const artifactsRoot = config.artifacts?.root ?? DEFAULTS.artifactsRoot;
   const kg = config.context?.knowledge_graph;
   const models = config.models ?? {};
@@ -82,15 +101,20 @@ export function resolveConfig(config: TessaConfig): ResolvedConfig {
       start_timeout_seconds: config.app.start_timeout_seconds ?? DEFAULTS.startTimeoutSeconds,
     },
     db: {
+      enabled: seeding,
       url_env: config.db.url_env ?? DEFAULTS.dbUrlEnv,
-      allowed_hosts: config.db.allowed_hosts,
-      profiles: config.db.profiles,
+      allowed_hosts: [...(config.db.allowed_hosts ?? [])],
+      profiles: seeding ? definedProfiles : { ...definedProfiles, [NO_SEED_PROFILE]: [] },
     },
     auth: {
       mode: 'manual',
       login_path: config.auth.login_path ?? DEFAULTS.loginPath,
     },
-    personas: config.personas,
+    personas: config.personas.map((p) => ({
+      ...p,
+      // The schema check (checkSemantics) makes seed_profile required while seeding is on.
+      seed_profile: p.seed_profile ?? NO_SEED_PROFILE,
+    })),
     artifacts: { root: artifactsRoot },
     context: {
       knowledge_graph: {

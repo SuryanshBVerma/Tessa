@@ -8,5 +8,5 @@ export {
   type LoadOptions,
   type LoadResult,
 } from './load.js';
-export { DEFAULTS, resolveConfig, type ResolvedConfig } from './resolve.js';
+export { DEFAULTS, NO_SEED_PROFILE, resolveConfig, type ResolvedConfig } from './resolve.js';
 export { detectStack, KNOWN_ADAPTERS, type ExportTarget, type StackReport } from './stacks.js';

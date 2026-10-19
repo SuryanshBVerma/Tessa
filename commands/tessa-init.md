@@ -32,8 +32,9 @@ the export targets.
   `init_workspace` sets `app.cwd` to it, so the start command runs there and the frontend map
   reads source from there.
 - If `backends` lists any, say that the backend must be running during a test run: the user
-  starts it, or `app.start` runs one script that starts both. Seed profiles must point at SQL
-  scripts for the backend's database, and that database must be a local Postgres.
+  starts it, or `app.start` runs one script that starts both. If Tessa is to seed, the seed
+  profiles must point at SQL scripts for the backend's database, and that database must be a
+  local Postgres.
 
 ## 2. Gather what detection cannot know
 
@@ -42,8 +43,13 @@ for the roles the app supports. Then confirm these with the user in one short me
 
 - **App URL** – must be a local address. Suggest `url_hint` from `detect_stack` if it has one.
 - **Start command** – suggest the detected one.
-- **Seed profiles** – profile name and ordered SQL files, relative to the repository root.
-- **Personas** – one per role worth testing, each with the seed profile it needs.
+- **Seeding** – whether Tessa should reset the database before each test. Recommend it when
+  there are seed scripts and a local Postgres database; otherwise suggest switching it off
+  (`seeding: false`), and say that tests will then run on whatever data the app already has.
+- **Seed profiles** (only with seeding on) – profile name and ordered SQL files, relative to the
+  repository root.
+- **Personas** – one per role worth testing, each with the seed profile it needs (none with
+  seeding off).
 - **Export target** – `playwright-ts`, `playwright-dotnet`, `cypress-ts`, `selenium-csharp`,
   `selenium-java`, or `auto`.
 

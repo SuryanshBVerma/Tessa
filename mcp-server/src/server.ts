@@ -25,7 +25,13 @@ import { renderHost } from './hosts/render.js';
 import { loadSources } from './hosts/sources.js';
 import { writeHostFiles } from './hosts/write.js';
 import { SeedError, seedProfile, type SeedResult } from './db/seed.js';
-import { detectStack, loadConfig, type ConfigIssue, type ResolvedConfig } from './config/index.js';
+import {
+  detectStack,
+  loadConfig,
+  NO_SEED_PROFILE,
+  type ConfigIssue,
+  type ResolvedConfig,
+} from './config/index.js';
 import { initWorkspace } from './init/index.js';
 import { captureEnvState, readGitState, type Observed } from './results/env.js';
 import {
@@ -139,6 +145,14 @@ export function createServer({ workspace }: ServerOptions): McpServer {
   };
 
   let lastSeed: SeedResult | null = null;
+  // Seeding switched off in config: nothing is read, connected to or run.
+  const seedingOff = (profile: string) => ({
+    ok: true,
+    skipped: true,
+    profile,
+    message:
+      'Seeding is off (db.enabled: false in .tessa/config.yaml), so the database was not touched. The test runs on the data the app already has.',
+  });
 
   const requireConfig = (): ResolvedConfig => {
     const loaded = loadConfig({ workspace });
@@ -226,6 +240,12 @@ export function createServer({ workspace }: ServerOptions): McpServer {
             cwd: z.string().optional(),
           })
           .optional(),
+        seeding: z
+          .boolean()
+          .optional()
+          .describe(
+            'false when the user does not want Tessa to seed the database: the config gets db.enabled: false and personas need no seed_profile.',
+          ),
         seed_profiles: z
           .record(z.string(), z.array(z.string()).min(1))
           .optional()
@@ -234,7 +254,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           .array(
             z.object({
               name: z.string(),
-              seed_profile: z.string(),
+              seed_profile: z.string().optional().describe('Required unless seeding is false.'),
               description: z.string().optional(),
             }),
           )
@@ -390,7 +410,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
     {
       title: 'Seed the database',
       description:
-        'Apply a seed profile from db.profiles, in order, in one transaction. Only the listed .sql files run, and only against a local host in db.allowed_hosts. The database URL comes from the db.url_env variable and is never returned.',
+        'Apply a seed profile from db.profiles, in order, in one transaction. Only the listed .sql files run, and only against a local host in db.allowed_hosts. The database URL comes from the db.url_env variable and is never returned. When seeding is off (db.enabled: false) it touches nothing and returns skipped: true; carry on with the test.',
       inputSchema: {
         profile: z.string().min(1).describe('Seed profile name from db.profiles.'),
       },
@@ -398,7 +418,9 @@ export function createServer({ workspace }: ServerOptions): McpServer {
     },
     async ({ profile }) => {
       try {
-        lastSeed = await seedProfile(requireConfig(), workspace, profile);
+        const config = requireConfig();
+        if (!config.db.enabled) return result(seedingOff(profile));
+        lastSeed = await seedProfile(config, workspace, profile);
         return result({ ok: true, ...lastSeed });
       } catch (error) {
         return failure(error);
@@ -411,7 +433,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
     {
       title: 'Reset the database',
       description:
-        'Return the database to a known state by re-applying a seed profile: the one given, else the last one seeded in this session, else "default". Same safety rules as seed_db.',
+        'Return the database to a known state by re-applying a seed profile: the one given, else the last one seeded in this session, else "default". Same safety rules as seed_db. When seeding is off it touches nothing and returns skipped: true.',
       inputSchema: {
         profile: z.string().min(1).optional(),
       },
@@ -419,8 +441,10 @@ export function createServer({ workspace }: ServerOptions): McpServer {
     },
     async ({ profile }) => {
       try {
+        const config = requireConfig();
+        if (!config.db.enabled) return result(seedingOff(profile ?? NO_SEED_PROFILE));
         const chosen = profile ?? lastSeed?.profile ?? 'default';
-        lastSeed = await seedProfile(requireConfig(), workspace, chosen);
+        lastSeed = await seedProfile(config, workspace, chosen);
         return result({ ok: true, reset_to: chosen, ...lastSeed });
       } catch (error) {
         return failure(error);

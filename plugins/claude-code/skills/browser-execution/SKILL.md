@@ -70,6 +70,11 @@ seeding such a profile, then do the sign-in pause for the next persona.
 To keep sign-ins few when running several stories, you may run the tests of one persona across
 all of them before switching, recording each in its own run.
 
+**Seeding switched off** (`db.enabled: false`): `seed_db` returns `skipped: true` and touches
+nothing. Carry on with the test on the data the app has. Data a test creates or changes stays for
+the next one, so read the page before acting rather than assuming what a list contains, and
+mention in your summary any failure that leftover data could explain.
+
 If `seed_db` refuses or fails, do not run the test. Record step 0 as `skipped` with the seed
 error and continue with the next test.
 

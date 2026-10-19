@@ -19,6 +19,9 @@ before 1.0, each minor version is one phase of the plan.
   beside it (.NET Web, Node, Spring Boot); `/tessa-init` sets `app.cwd` to the app's folder, and
   the frontend map reads routes, source globs and tsconfig aliases from there.
 - The planner, executor and context builder follow the adapter skill for the app's stack.
+- Seeding can be switched off with `db.enabled: false`: Tessa never connects to the database,
+  `seed_db` and `reset_db` report `skipped`, personas need no seed profile, and every test uses
+  the built-in `none` profile. `/tessa-init` asks whether to seed.
 
 ### Fixed
 

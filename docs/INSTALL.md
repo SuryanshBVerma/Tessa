@@ -6,14 +6,14 @@ files into the repository you want to test and registers the server with your ho
 
 ## Requirements
 
-| You need                                        | Notes                                                                                          |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Node 24 or later                                | Runs `tessa-mcp`                                                                               |
-| Claude Code, or VS Code with Copilot agent mode | Custom agents, prompt files and skills must be available in VS Code                            |
-| A browser the agent can drive                   | Claude Code: a Playwright MCP server named `playwright`. VS Code: the integrated browser tools |
-| Your app, runnable locally                      | One start command, on a `localhost` or `127.0.0.1` URL                                         |
-| A local Postgres database                       | With `.sql` seed scripts. Tessa refuses any database host that is not local                    |
-| A supported stack                               | React Router (framework mode) or Angular 14+; other stacks run without the code map            |
+| You need                                        | Notes                                                                                                                |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Node 24 or later                                | Runs `tessa-mcp`                                                                                                     |
+| Claude Code, or VS Code with Copilot agent mode | Custom agents, prompt files and skills must be available in VS Code                                                  |
+| A browser the agent can drive                   | Claude Code: a Playwright MCP server named `playwright`. VS Code: the integrated browser tools                       |
+| Your app, runnable locally                      | One start command, on a `localhost` or `127.0.0.1` URL                                                               |
+| A local Postgres database (optional)            | With `.sql` seed scripts, if Tessa is to reset data between tests; local hosts only. Without one, switch seeding off |
+| A supported stack                               | React Router (framework mode) or Angular 14+; other stacks run without the code map                                  |
 
 ## Choose how to install
 

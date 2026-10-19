@@ -183,6 +183,7 @@ describe('DEFAULTS', () => {
     const d = schema.$defs;
     expect(d.app.properties.health_path.default).toBe(DEFAULTS.healthPath);
     expect(d.app.properties.start_timeout_seconds.default).toBe(DEFAULTS.startTimeoutSeconds);
+    expect(d.db.properties.enabled.default).toBe(DEFAULTS.dbEnabled);
     expect(d.db.properties.url_env.default).toBe(DEFAULTS.dbUrlEnv);
     expect(d.auth.properties.login_path.default).toBe(DEFAULTS.loginPath);
     expect(d.artifacts.properties.root.default).toBe(DEFAULTS.artifactsRoot);

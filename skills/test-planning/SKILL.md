@@ -41,6 +41,10 @@ the criterion ids, and tells you about uncovered criteria; fix every error it re
 - `id`: lowercase, dashes, unique in the plan, and stable: describe the behaviour, not the
   order (`editor-closes-ticket`, not `test-2`).
 - `persona`: one from config. `seed_profile`: the one that gives this test the data it needs.
+  With seeding off (`db.enabled: false`), every test uses `none`, and the data is whatever the
+  app already holds: plan tests that create the records they need, or that hold for any data
+  (a list has a header, a button is hidden for a role), give created records unique names, and
+  avoid tests that delete or change records other tests read.
 - `start_path`: where the test begins. Prefer it over a first `navigate` step.
 - `tags`: optional, for filtering: `happy-path`, `permissions`, `validation`, `edge`.
 

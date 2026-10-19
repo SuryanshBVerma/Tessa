@@ -11,6 +11,8 @@ app:
   stack: react-router
 
 db:
+  # false: Tessa never touches the database, and the keys below and personas' seed_profile can go.
+  enabled: true
   # Environment variable holding the database URL. Never put the URL itself here.
   url_env: DATABASE_URL
   # Seeding refuses any host not in this list. Only local hosts are accepted.

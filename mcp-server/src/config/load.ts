@@ -62,7 +62,12 @@ export function parseConfigText(text: string): { data?: unknown; issues: ConfigI
 /** Checks the schema cannot express: references between sections and files on disk. */
 export function checkSemantics(config: TessaConfig, workspace: string): ConfigIssue[] {
   const issues: ConfigIssue[] = [];
-  const profiles = config.db.profiles;
+  const seeding = config.db.enabled !== false;
+  // With seeding off, the built-in "none" profile is always there and no files are checked.
+  const profiles: Record<string, unknown> = {
+    ...(config.db.profiles ?? {}),
+    ...(seeding ? {} : { none: [] }),
+  };
 
   const seen = new Set<string>();
   config.personas.forEach((persona, index) => {
@@ -70,7 +75,16 @@ export function checkSemantics(config: TessaConfig, workspace: string): ConfigIs
       issues.push(error(`/personas/${String(index)}/name`, `duplicate persona "${persona.name}"`));
     }
     seen.add(persona.name);
-    if (!Object.hasOwn(profiles, persona.seed_profile)) {
+    if (persona.seed_profile === undefined) {
+      if (seeding) {
+        issues.push(
+          error(
+            `/personas/${String(index)}/seed_profile`,
+            'a seed profile is required while seeding is on (or set db.enabled: false)',
+          ),
+        );
+      }
+    } else if (!Object.hasOwn(profiles, persona.seed_profile)) {
       issues.push(
         error(
           `/personas/${String(index)}/seed_profile`,
@@ -105,10 +119,12 @@ export function checkSemantics(config: TessaConfig, workspace: string): ConfigIs
     }
   };
 
-  for (const [name, files] of Object.entries(profiles)) {
-    (files ?? []).forEach((file, index) => {
-      checkPath(`/db/profiles/${name}/${String(index)}`, file, 'file', true);
-    });
+  if (seeding) {
+    for (const [name, files] of Object.entries(config.db.profiles ?? {})) {
+      (files ?? []).forEach((file, index) => {
+        checkPath(`/db/profiles/${name}/${String(index)}`, file, 'file', true);
+      });
+    }
   }
   if (config.app.cwd !== undefined) {
     checkPath('/app/cwd', config.app.cwd, 'dir', true);

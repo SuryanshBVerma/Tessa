@@ -16,8 +16,10 @@ const SAFE_ROOT = /^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/;
 
 export interface InitOptions {
   app?: { start?: string; url?: string; stack?: string; cwd?: string };
+  /** False: Tessa never seeds the database (db.enabled: false); seed_profiles are not used. */
+  seeding?: boolean;
   seed_profiles?: Record<string, string[]>;
-  personas?: { name: string; seed_profile: string; description?: string }[];
+  personas?: { name: string; seed_profile?: string; description?: string }[];
   export_target?: ExportTarget | 'auto';
   artifacts_root?: string;
   /** Globs the static map reads. Defaults to the first of src/ or app/ that exists. */
@@ -71,7 +73,12 @@ export function buildConfigText(
   // In a monorepo the app sits in a subfolder; the start command and the static map use it.
   const appRoot = app.cwd ?? (detected.app_root === '.' ? undefined : detected.app_root);
   set(['app', 'cwd'], appRoot);
-  set(['db', 'profiles'], options.seed_profiles);
+  if (options.seeding === false) {
+    // No database settings at all: Tessa will not connect to it.
+    doc.setIn(['db'], doc.createNode({ enabled: false }));
+  } else {
+    set(['db', 'profiles'], options.seed_profiles);
+  }
   set(['personas'], options.personas);
   set(['artifacts', 'root'], options.artifacts_root);
   set(

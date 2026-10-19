@@ -11,7 +11,9 @@ Tessa tests your app the way a person would, on your machine. It needs:
 - **The app, runnable locally** with one command (for example `npm run dev` or `npm start`), on a
   `localhost` or `127.0.0.1` URL. If the frontend talks to a separate backend (common with
   Angular), start the backend yourself first, or use one script that starts both.
-- **A local development database** and plain `.sql` seed scripts that put it into a known state:
+- **A local development database** and plain `.sql` seed scripts that put it into a known state
+  (optional: with `db.enabled: false`, Tessa never touches the database and tests run on the data
+  the app already has):
   users for each role, and the data your stories need. Tessa runs only the scripts you list, and
   only against hosts on your allowlist. It never touches a shared or production database.
 - **One account per persona** you want to test (for example viewer, editor, admin). You sign in
@@ -125,34 +127,35 @@ If you open `report.html` straight from disk, the Export button cannot reach Tes
 `.tessa/config.yaml` is validated against `schemas/config.schema.json`. Run `/tessa-init` again,
 or ask the agent to call `validate_config`, to check it.
 
-| Key                                             | Default                              | Meaning                                                                                                                  |
-| ----------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| `app.start`                                     | (required)                           | Command that starts the app. Run without a shell, so no `&&`, pipes or redirects                                         |
-| `app.cwd`                                       | repository root                      | The app's folder in a monorepo: where the start command runs and the map reads source                                    |
-| `app.url`                                       | (required)                           | Base URL; must be `localhost`, `127.0.0.1` or `[::1]`                                                                    |
-| `app.stack`                                     | (required)                           | Stack adapter, for example `react-router`                                                                                |
-| `app.health_path`                               | `/`                                  | Path polled until the app answers; any status below 500 counts                                                           |
-| `app.start_timeout_seconds`                     | `60`                                 | How long to wait for the app to come up                                                                                  |
-| `db.url_env`                                    | `DATABASE_URL`                       | Environment variable holding the database URL                                                                            |
-| `db.allowed_hosts`                              | (required)                           | Hosts seeding may touch; only local hosts are accepted                                                                   |
-| `db.profiles`                                   | (required)                           | Seed profiles: name → ordered list of `.sql` files                                                                       |
-| `auth.mode`                                     | `manual`                             | Always manual: you sign in by hand                                                                                       |
-| `auth.login_path`                               | `/login`                             | Where Tessa sends you to sign in                                                                                         |
-| `personas`                                      | (required)                           | One entry per role: `name` and the `seed_profile` it needs                                                               |
-| `artifacts.root`                                | `ai-test-artifacts`                  | Where Tessa writes everything                                                                                            |
-| `context.static_map.include`, `exclude`         | `src/**`, none                       | Source files the map reads, relative to `app.cwd`                                                                        |
-| `context.runtime_crawl.enabled`                 | `true`                               | Allow `/tessa-refresh-context crawl`                                                                                     |
-| `context.knowledge_graph.mode`                  | `builtin`                            | `builtin` (Tessa's map), `external` (your team's graph) or `hybrid`                                                      |
-| `context.hints`                                 | `<root>/context/hints.md`            | The hand-written hints file                                                                                              |
-| `review.mode`                                   | `local-server`                       | `local-server` (served with an Export button) or `static` (file only)                                                    |
-| `review.idle_timeout_minutes`                   | `30`                                 | The review server stops after this long without requests                                                                 |
-| `review.show_code_preview`, `show_overlap`      | `true`                               | Report sections                                                                                                          |
-| `export.target`                                 | `auto`                               | `playwright-ts`, `playwright-dotnet`, or `auto` to detect from your project files                                        |
-| `export.conventions.test_dir`                   | `tests/e2e` (TS), `tests/E2E` (.NET) | Where exported tests go after you confirm                                                                                |
-| `export.conventions.page_objects_dir`, `naming` |                                      | Your page objects folder; file naming such as `{feature}.{scenario}.spec`                                                |
-| `export.conventions.adapt_to_codebase`          | `true`                               | Adapt generated tests to your conventions                                                                                |
-| `export.validate.compile`, `run_once`           | `true`, `true`                       | Compile the export; run it once (see [Status](../README.md#status-and-limits))                                           |
-| `models.<role>`                                 | `auto`                               | Model per role: `orchestrator`, `context_builder`, `planner`, `executor`, `triage`, `exporter`; `default` applies to all |
+| Key                                             | Default                              | Meaning                                                                                                                                |
+| ----------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `app.start`                                     | (required)                           | Command that starts the app. Run without a shell, so no `&&`, pipes or redirects                                                       |
+| `app.cwd`                                       | repository root                      | The app's folder in a monorepo: where the start command runs and the map reads source                                                  |
+| `app.url`                                       | (required)                           | Base URL; must be `localhost`, `127.0.0.1` or `[::1]`                                                                                  |
+| `app.stack`                                     | (required)                           | Stack adapter, for example `react-router`                                                                                              |
+| `app.health_path`                               | `/`                                  | Path polled until the app answers; any status below 500 counts                                                                         |
+| `app.start_timeout_seconds`                     | `60`                                 | How long to wait for the app to come up                                                                                                |
+| `db.enabled`                                    | `true`                               | `false` switches seeding off: Tessa never connects to the database, and the other `db` keys and personas' seed profiles are not needed |
+| `db.url_env`                                    | `DATABASE_URL`                       | Environment variable holding the database URL                                                                                          |
+| `db.allowed_hosts`                              | (required with seeding on)           | Hosts seeding may touch; only local hosts are accepted                                                                                 |
+| `db.profiles`                                   | (required with seeding on)           | Seed profiles: name → ordered list of `.sql` files                                                                                     |
+| `auth.mode`                                     | `manual`                             | Always manual: you sign in by hand                                                                                                     |
+| `auth.login_path`                               | `/login`                             | Where Tessa sends you to sign in                                                                                                       |
+| `personas`                                      | (required)                           | One entry per role: `name` and the `seed_profile` it needs                                                                             |
+| `artifacts.root`                                | `ai-test-artifacts`                  | Where Tessa writes everything                                                                                                          |
+| `context.static_map.include`, `exclude`         | `src/**`, none                       | Source files the map reads, relative to `app.cwd`                                                                                      |
+| `context.runtime_crawl.enabled`                 | `true`                               | Allow `/tessa-refresh-context crawl`                                                                                                   |
+| `context.knowledge_graph.mode`                  | `builtin`                            | `builtin` (Tessa's map), `external` (your team's graph) or `hybrid`                                                                    |
+| `context.hints`                                 | `<root>/context/hints.md`            | The hand-written hints file                                                                                                            |
+| `review.mode`                                   | `local-server`                       | `local-server` (served with an Export button) or `static` (file only)                                                                  |
+| `review.idle_timeout_minutes`                   | `30`                                 | The review server stops after this long without requests                                                                               |
+| `review.show_code_preview`, `show_overlap`      | `true`                               | Report sections                                                                                                                        |
+| `export.target`                                 | `auto`                               | `playwright-ts`, `playwright-dotnet`, or `auto` to detect from your project files                                                      |
+| `export.conventions.test_dir`                   | `tests/e2e` (TS), `tests/E2E` (.NET) | Where exported tests go after you confirm                                                                                              |
+| `export.conventions.page_objects_dir`, `naming` |                                      | Your page objects folder; file naming such as `{feature}.{scenario}.spec`                                                              |
+| `export.conventions.adapt_to_codebase`          | `true`                               | Adapt generated tests to your conventions                                                                                              |
+| `export.validate.compile`, `run_once`           | `true`, `true`                       | Compile the export; run it once (see [Status](../README.md#status-and-limits))                                                         |
+| `models.<role>`                                 | `auto`                               | Model per role: `orchestrator`, `context_builder`, `planner`, `executor`, `triage`, `exporter`; `default` applies to all               |
 
 After changing `models`, run `/tessa-init` again (or `npx tessa-qa install` again) so the host files
 pick up the new models.

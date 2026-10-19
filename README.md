@@ -45,8 +45,8 @@ into your repository.
   also use your team's existing knowledge graph.
 - **You stay signed in, Tessa stays out:** sign-in always happens by hand, in your host's browser.
   Tessa has no tool that takes a password.
-- **Safe database seeding:** only the SQL files you list, only against local hosts on your
-  allowlist.
+- **Safe database seeding, or none:** only the SQL files you list, only against local hosts on your
+  allowlist. Or switch seeding off and test on the data the app already has.
 - **Reruns and diffs:** rerun just the failures, and compare two runs as JSON and HTML, with triage
   notes on what regressed.
 - **Deterministic export:** code is generated from the plan by a fixed emitter, never written from
@@ -56,7 +56,8 @@ into your repository.
 ## Get started
 
 Requirements: Node 24 or later, Claude Code or VS Code with Copilot agent mode, your app running
-locally, and a local Postgres database for seeding.
+locally, and, if Tessa is to reset data between tests, a local Postgres database with SQL seed
+scripts. Seeding can be switched off.
 
 ```bash
 npx tessa-qa@0.9.1 install --host claude-code    # or --host vscode-agent
