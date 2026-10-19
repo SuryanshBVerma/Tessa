@@ -1,27 +1,37 @@
 # Maps Tessa's context queries to tools on your team's knowledge-graph MCP server.
-# Used when context.knowledge_graph.mode is external or hybrid. tessa-mcp never calls the
-# server itself: it tells the agent which tool to call, with these arguments, and the agent's
-# host makes the call.
+# Easiest: run /tessa-connect-graph, which checks the graph, works this out from its tools and
+# saves it here. Used when context.knowledge_graph.mode is external or hybrid.
 #
-# Placeholders in args are replaced with the query's inputs: {query}, {route}, {file}.
-# Leave a query out to answer it from Tessa's built-in map.
+# tessa-mcp never calls the server itself: it tells the agent which tool to call, with these
+# arguments, and the agent's host makes the call. Map only tools that read.
+#
+# Placeholders in string args are replaced with the query's inputs: {query}, {route}, {file}.
+# Numbers and booleans are passed as they are. Leave a query out to answer it from Tessa's map.
 version: 1
 
 # The knowledge-graph MCP server's name in your host. Defaults to context.knowledge_graph.mcp_server.
 server: frontend-kg
 
+# How to use this graph, passed to every agent that calls it.
+notes: Every tool needs the project name "my-app". Results are JSON with a "results" array.
+
 queries:
   routes_for_feature:
     tool: search_routes
     args:
+      project: my-app
       query: '{query}'
+      limit: 20
+    description: Each result has the route path and its component file.
   components_for_route:
     tool: route_components
     args:
+      project: my-app
       route: '{route}'
   permissions_for_route:
     tool: route_permissions
     args:
+      project: my-app
       route: '{route}'
   # api_calls_for_component and selectors_for_component are answered by the built-in map
   # unless you add them here.
@@ -29,4 +39,9 @@ queries:
 # How Tessa learns which commit the graph was built from, to warn when it lags HEAD.
 freshness:
   tool: index_status
+  args:
+    project: my-app
   commit_field: indexed_commit
+
+# Other read-only tools Tessa's agents may call, such as one returning a code snippet.
+extra_tools: []

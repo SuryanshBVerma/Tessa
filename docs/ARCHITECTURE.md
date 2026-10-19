@@ -56,18 +56,18 @@ re-reads the component. Both adapters follow `tsconfig` path aliases.
 
 ## 4. MCP server: `tessa-mcp`
 
-| Group              | Tools                                                                                                                                                                                                 |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Config             | `load_config`, `validate_config`, `detect_stack`, `init_workspace`                                                                                                                                    |
-| App lifecycle      | `start_app`, `stop_app`, `health_check`                                                                                                                                                               |
-| Database           | `seed_db(profile)`, `reset_db` — allowlisted scripts only, local hosts only                                                                                                                           |
-| Context            | `build_static_map`, `context_freshness`, `routes_for_feature`, `components_for_route`, `permissions_for_route`, `api_calls_for_component`, `selectors_for_component`, `story_context`, `record_crawl` |
-| Plans              | `save_plan`, `approve_plan`, `plan_status` — approval is recorded with the plan's hash and `begin_run` refuses unapproved or changed plans                                                            |
-| Evidence & results | `begin_run`, `capture_env_state`, `record_step`, `write_results`                                                                                                                                      |
-| Review             | `render_report`, `serve_review`, `get_selection`, `record_selection`, `stop_review`                                                                                                                   |
-| Runs               | `list_runs`, `failed_test_ids`, `diff_runs`, `annotate_diff`, `record_triage`                                                                                                                         |
-| Hosts              | `write_host_files` — writes the agents, commands, skills and MCP entry for Claude Code or VS Code                                                                                                     |
-| Export             | `emit_tests(selection, target)`, `update_export_file`, `validate_export`, `capture_session`, `propose_handoff`, `apply_handoff`                                                                       |
+| Group              | Tools                                                                                                                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Config             | `load_config`, `validate_config`, `detect_stack`, `init_workspace`                                                                                                                                                                    |
+| App lifecycle      | `start_app`, `stop_app`, `health_check`                                                                                                                                                                                               |
+| Database           | `seed_db(profile)`, `reset_db` — allowlisted scripts only, local hosts only                                                                                                                                                           |
+| Context            | `build_static_map`, `context_freshness`, `routes_for_feature`, `components_for_route`, `permissions_for_route`, `api_calls_for_component`, `selectors_for_component`, `story_context`, `record_crawl`, `kg_status`, `save_kg_mapping` |
+| Plans              | `save_plan`, `approve_plan`, `plan_status` — approval is recorded with the plan's hash and `begin_run` refuses unapproved or changed plans                                                                                            |
+| Evidence & results | `begin_run`, `capture_env_state`, `record_step`, `write_results`                                                                                                                                                                      |
+| Review             | `render_report`, `serve_review`, `get_selection`, `record_selection`, `stop_review`                                                                                                                                                   |
+| Runs               | `list_runs`, `failed_test_ids`, `diff_runs`, `annotate_diff`, `record_triage`                                                                                                                                                         |
+| Hosts              | `write_host_files` — writes the agents, commands, skills and MCP entry for Claude Code or VS Code                                                                                                                                     |
+| Export             | `emit_tests(selection, target)`, `update_export_file`, `validate_export`, `capture_session`, `propose_handoff`, `apply_handoff`                                                                                                       |
 
 Internal modules: static extractor with framework adapters (the TypeScript compiler API), context
 query router, report and diff renderers (fixed HTML/CSS/JS templates), review server, emitters per
@@ -111,6 +111,16 @@ Agents depend only on the five context query tools. Config chooses who answers t
 - `hybrid` — external first, built-in fills gaps (e.g. selectors, guards).
 
 `context_freshness` warns in the report when the graph's indexed commit lags HEAD by more than `max_staleness_commits`.
+
+**Connecting a graph.** `/tessa-connect-graph` has the agent find the graph's MCP server, check
+that it answers and has indexed the repository, and map each query to a read-only tool from the
+graph's own tool descriptions, trying each call once. The mapping can hold constant arguments
+(a project name), a description of each answer and free-form `notes`; every delegate carries
+them. `save_kg_mapping` validates the mapping and writes it and `context.knowledge_graph` after
+the user confirms; `kg_status` reports the setup and a probe call. The host writers then grant
+the mapped tools (plus any `extra_tools`), and only those, to agents and commands that use the
+context queries: `mcp__<server>__<tool>` in Claude Code, `<server>/<tool>` in VS Code.
+Without that grant an agent could be told to call a tool it is not allowed to use.
 
 ## 6. Neutral test format (test IR)
 
@@ -188,6 +198,7 @@ agent reports for itself, in `results.json`, and the report header shows them.
 | ---------------------------------- | ------------------------------------------------------------------- |
 | `/tessa-init`                      | Scaffold config, detect stack, write host files with model settings |
 | `/tessa-refresh-context`           | Rebuild the frontend map and run the crawl                          |
+| `/tessa-connect-graph [server]`    | Check and connect an existing knowledge graph                       |
 | `/tessa-test-story <id or text>`   | Full flow (section 1)                                               |
 | `/tessa-run <story> [test-id ...]` | Run an approved plan without replanning                             |
 | `/tessa-rerun-failed [run]`        | Rerun failed tests only                                             |

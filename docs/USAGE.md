@@ -99,10 +99,29 @@ Exported tests sign in from stored sessions, never from credentials in code. The
 | See what changed between two runs | `/tessa-diff` (newest run against the one before) or `/tessa-diff <run-a> <run-b>` |
 | Export from an earlier run        | `/tessa-export <run-id>`                                                           |
 | The code changed a lot            | `/tessa-refresh-context`                                                           |
+| Use the team's knowledge graph    | `/tessa-connect-graph` or `/tessa-connect-graph <server>`                          |
 
 A rerun is linked to the run it repeats, and its diff compares only the tests it reran. Diffs
 are written as JSON and as an HTML page to `ai-test-artifacts/diffs/`; triage adds a note to each
 regression explaining what changed.
+
+## Using your team's knowledge graph
+
+If you already run a knowledge graph of the codebase as an MCP server (a code graph, or a
+frontend knowledge graph), Tessa can ask it about routes, components, permissions, API calls and
+selectors instead of, or as well as, its own map. Add the graph's server to your host's MCP
+config first, then run `/tessa-connect-graph`, optionally with the server's name. The agent:
+
+1. finds the server and checks that it answers and has indexed this repository;
+2. reads the graph's tool descriptions and maps each of Tessa's questions to a read-only tool,
+   trying each one once, and writes notes on how to use it (a project name, result shapes);
+3. shows you the mapping and the config change, and saves them only when you confirm
+   (`.tessa/kg-mapping.yaml` and `context.knowledge_graph` in the config);
+4. rewrites the host files so the planner, context builder and triage agents may call the mapped
+   tools, and nothing else on that server.
+
+`hybrid` mode (the default) asks the graph first and fills gaps from Tessa's own map, such as
+test ids and route guards. Restart the host afterwards. `kg_status` shows what is connected.
 
 ## Reading the report
 

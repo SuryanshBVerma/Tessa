@@ -22,9 +22,17 @@ before 1.0, each minor version is one phase of the plan.
 - Seeding can be switched off with `db.enabled: false`: Tessa never connects to the database,
   `seed_db` and `reset_db` report `skipped`, personas need no seed profile, and every test uses
   the built-in `none` profile. `/tessa-init` asks whether to seed.
+- `/tessa-connect-graph`, `kg_status` and `save_kg_mapping`: connect a knowledge graph you
+  already run as an MCP server. The agent checks it answers and has indexed the repository, maps
+  Tessa's context queries to its read-only tools from their descriptions, and writes usage notes;
+  Tessa saves the mapping and turns the graph on after you confirm. Mappings take constant
+  numeric and boolean arguments, per-call descriptions, notes and extra tools.
 
 ### Fixed
 
+- Agents could not call a connected knowledge graph: their tool lists held only Tessa's tools,
+  so a delegate could never be followed. The host files now grant the mapped graph tools to the
+  planner, context builder, triage agent and context commands.
 - The `init_workspace` dry run no longer returns the whole `.gitignore` and hints template;
   it previews the config, Tessa's `.gitignore` block and a line count for the hints. On a large
   repository the full result was too long for hosts to show.

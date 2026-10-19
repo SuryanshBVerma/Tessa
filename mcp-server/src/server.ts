@@ -6,7 +6,8 @@ import { AppManager, checkHealth } from './app/lifecycle.js';
 import { buildStaticMap, ContextError, loadMap, requireMap } from './context/build.js';
 import { recordCrawl } from './context/crawl.js';
 import { builtinFreshness, externalFreshness } from './context/freshness.js';
-import { delegateFor, mode, type QueryName } from './context/kg.js';
+import { delegateFor, mode, QUERY_NAMES, type QueryName } from './context/kg.js';
+import { kgStatus, saveKgMapping } from './context/kg-setup.js';
 import {
   apiCallsForComponent,
   componentsForRoute,
@@ -316,6 +317,7 @@ export function createServer({ workspace }: ServerOptions): McpServer {
           dry_run: dry_run === true,
           config_used: fromConfig,
           models: resolveModels(config, host).map((c) => ({ role: c.role, model: c.label })),
+          ...(config.graph === undefined ? {} : { knowledge_graph_tools: config.graph }),
           files: outcomes,
           next_steps:
             host === 'claude-code'
@@ -1209,6 +1211,99 @@ export function createServer({ workspace }: ServerOptions): McpServer {
         return result({
           ok: true,
           ...(await buildStaticMap(contextCtx(), { force: force === true })),
+        });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  const graphCall = z.object({
+    tool: z.string().min(1).describe("The graph tool's name, exactly as its server lists it."),
+    args: z
+      .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+      .optional()
+      .describe('Arguments; strings may use {query}, {route} or {file}.'),
+    description: z.string().max(500).optional().describe('How to read its answer.'),
+  });
+
+  server.registerTool(
+    'kg_status',
+    {
+      title: 'Knowledge-graph status',
+      description:
+        "What is configured for the team's knowledge graph: mode, server, which context queries it answers, usage notes, the graph tools Tessa's agents are given, and a probe call to check the graph answers. Tessa never calls the graph itself; make the probe call yourself.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    () => {
+      try {
+        return result({ ok: true, ...kgStatus(contextCtx()) });
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    'save_kg_mapping',
+    {
+      title: 'Save a knowledge-graph mapping',
+      description:
+        "Save how Tessa's context queries map to tools on the team's knowledge-graph MCP server, and turn the graph on in .tessa/config.yaml (mode hybrid by default: the graph first, Tessa's map for the rest). Map only read-only tools you have called and checked. Preview with dry_run and show the user before saving. Afterwards, write the host files again so the agents may call the graph's tools.",
+      inputSchema: {
+        server: z
+          .string()
+          .min(1)
+          .describe("The graph's MCP server name, as in the host's MCP config."),
+        mode: z.enum(['external', 'hybrid']).optional(),
+        queries: z
+          .partialRecord(z.enum(QUERY_NAMES), graphCall)
+          .optional()
+          .describe('For each context query the graph can answer, the tool and arguments.'),
+        freshness: graphCall
+          .extend({
+            commit_field: z
+              .string()
+              .min(1)
+              .optional()
+              .describe('The field in its answer that holds the indexed commit.'),
+          })
+          .optional()
+          .describe('The tool that reports which commit the graph was built from.'),
+        notes: z
+          .string()
+          .max(4000)
+          .optional()
+          .describe('How to use this graph: required constant arguments, result shapes, limits.'),
+        extra_tools: z
+          .array(z.string().min(1))
+          .max(20)
+          .optional()
+          .describe(
+            'Other read-only graph tools the agents may call, such as a code snippet tool.',
+          ),
+        dry_run: z.boolean().optional(),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    },
+    (args) => {
+      try {
+        const input = JSON.parse(JSON.stringify(args)) as Parameters<typeof saveKgMapping>[1] & {
+          dry_run?: boolean;
+        };
+        const saved = saveKgMapping(workspace, input, input.dry_run === true);
+        return result({
+          ok: true,
+          dry_run: input.dry_run === true,
+          files: saved.files,
+          next_steps:
+            input.dry_run === true
+              ? ['Show the user both previews, and save without dry_run only when they confirm.']
+              : [
+                  'Call write_host_files for this host (dry run first) so the planner, context builder and triage agents may call the mapped graph tools.',
+                  'Call context_freshness and follow its delegate to check how far the graph lags HEAD.',
+                ],
         });
       } catch (error) {
         return failure(error);

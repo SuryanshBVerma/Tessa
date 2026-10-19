@@ -67,7 +67,13 @@ Call `validate_config` and report the result:
 - Errors or warnings: list each with its path and a one-line fix. Do not edit the config
   yourself; the user decides how to fix it.
 
-## 5. Host files
+## 5. Knowledge graph
+
+Ask whether the team already runs a knowledge graph of this codebase as an MCP server. If they
+do, finish this command, then suggest `/tessa-connect-graph <server>`: it checks the graph,
+works out how Tessa should use it, and saves the mapping. Without one, Tessa uses its own map.
+
+## 6. Host files
 
 Tessa's agents, commands and skills are written in the format of the host you are running in
 (`claude-code` or `vscode-agent`), with the models from the config's `models` section.

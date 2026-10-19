@@ -7,6 +7,27 @@ import { toolRefs, type Source } from './sources.js';
 /** Marks a file as Tessa's, so regenerating may replace or remove it and nothing else. */
 export const MARKER = 'tessa-generated';
 
+/** What the host files are written from: the models, and a connected knowledge graph, if any. */
+export type HostSetup = Pick<ResolvedConfig, 'models'> & {
+  /** The team's knowledge-graph MCP server and the tools its mapping uses. */
+  graph?: { server: string; tools: string[] };
+};
+
+/** Tessa tools that answer context queries; whoever uses them may need the graph's tools too. */
+const CONTEXT_TOOLS = new Set([
+  'routes_for_feature',
+  'components_for_route',
+  'permissions_for_route',
+  'api_calls_for_component',
+  'selectors_for_component',
+  'story_context',
+  'context_freshness',
+]);
+
+function usesContext(source: Source): boolean {
+  return toolRefs(source).mcp.some((tool) => CONTEXT_TOOLS.has(tool));
+}
+
 export interface RenderOptions {
   /** Claude Code only: plugin output names MCP tools by plugin, and has no project MCP config. */
   mode: 'project' | 'plugin';
@@ -61,6 +82,7 @@ export const NEVER_PREAPPROVED = new Set([
   'approve_plan',
   'record_selection',
   'write_host_files',
+  'save_kg_mapping',
 ]);
 
 function roleOf(agent: Source): Role | null {
@@ -95,7 +117,17 @@ function npxCommand(
 // ---------------------------------------------------------------------------------------------
 // Claude Code
 
-function claudeTools(source: Source, options: RenderOptions, forCommand: boolean): string[] {
+/** Claude Code turns characters outside A-Z, a-z, 0-9, "_" and "-" in a server name into "_". */
+function claudeServer(name: string): string {
+  return name.replace(/[^A-Za-z0-9_-]/g, '_');
+}
+
+function claudeTools(
+  source: Source,
+  options: RenderOptions,
+  forCommand: boolean,
+  graph?: HostSetup['graph'],
+): string[] {
   const refs = toolRefs(source);
   const server = options.mode === 'plugin' ? `plugin_${PLUGIN_NAME}_${SERVER}` : SERVER;
   const tools = refs.mcp
@@ -107,6 +139,9 @@ function claudeTools(source: Source, options: RenderOptions, forCommand: boolean
     if (builtin === 'browser') tools.push(...PLAYWRIGHT_TOOLS.map((t) => `mcp__playwright__${t}`));
   }
   if (refs.agents.length > 0) tools.push('Agent');
+  if (graph !== undefined && usesContext(source)) {
+    tools.push(...graph.tools.map((t) => `mcp__${claudeServer(graph.server)}__${t}`));
+  }
   return [...new Set(tools)];
 }
 
@@ -136,7 +171,7 @@ export function referencedSkills(source: Source, sources: readonly Source[]): st
 
 export function renderClaudeCode(
   sources: readonly Source[],
-  config: Pick<ResolvedConfig, 'models'>,
+  config: HostSetup,
   options: RenderOptions,
 ): RenderedFile[] {
   const base = options.mode === 'plugin' ? '' : '.claude/';
@@ -163,7 +198,7 @@ export function renderClaudeCode(
           {
             name: source.name,
             description: source.frontmatter.description,
-            tools: claudeTools(source, options, false).join(', '),
+            tools: claudeTools(source, options, false, config.graph).join(', '),
             ...(model === null ? {} : { model }),
             ...(skills.length > 0 ? { skills } : {}),
           },
@@ -186,7 +221,7 @@ export function renderClaudeCode(
             ...(typeof source.frontmatter['argument-hint'] === 'string'
               ? { 'argument-hint': source.frontmatter['argument-hint'] }
               : {}),
-            'allowed-tools': claudeTools(source, options, true).join(', '),
+            'allowed-tools': claudeTools(source, options, true, config.graph).join(', '),
           },
           source,
           lead + argumentsFor('claude-code', source.body),
@@ -217,19 +252,19 @@ export function renderClaudeCode(
 // ---------------------------------------------------------------------------------------------
 // VS Code agent mode
 
-function vscodeTools(source: Source): string[] {
+function vscodeTools(source: Source, graph?: HostSetup['graph']): string[] {
   const refs = toolRefs(source);
   return [
     ...refs.mcp.map((tool) => `${SERVER}/${tool}`),
     ...refs.builtin,
     ...(refs.agents.length > 0 ? ['agent'] : []),
+    ...(graph !== undefined && usesContext(source)
+      ? graph.tools.map((t) => `${graph.server}/${t}`)
+      : []),
   ];
 }
 
-export function renderVsCode(
-  sources: readonly Source[],
-  config: Pick<ResolvedConfig, 'models'>,
-): RenderedFile[] {
+export function renderVsCode(sources: readonly Source[], config: HostSetup): RenderedFile[] {
   const files: RenderedFile[] = [];
   for (const source of sources) {
     if (source.kind === 'agent') {
@@ -243,7 +278,7 @@ export function renderVsCode(
           {
             name: source.name,
             description: source.frontmatter.description,
-            tools: vscodeTools(source),
+            tools: vscodeTools(source, config.graph),
             ...(refs.agents.length > 0 ? { agents: refs.agents } : {}),
             ...(model === null ? {} : { model }),
             // Only an agent that delegates is picked by the user; the rest run as its subagents.
@@ -264,10 +299,14 @@ export function renderVsCode(
             ...(typeof source.frontmatter['argument-hint'] === 'string'
               ? { 'argument-hint': source.frontmatter['argument-hint'] }
               : {}),
-            // A prompt that runs in a custom agent uses that agent's tools.
+            // A prompt that runs in a custom agent uses that agent's tools. One marked
+            // open-tools needs every MCP server the user has (to find their knowledge graph),
+            // so it lists none and keeps the agent's defaults.
             ...(typeof agent === 'string'
               ? { agent }
-              : { agent: 'agent', tools: vscodeTools(source) }),
+              : source.frontmatter['open-tools'] === true
+                ? { agent: 'agent' }
+                : { agent: 'agent', tools: vscodeTools(source, config.graph) }),
           },
           source,
           argumentsFor('vscode-agent', source.body),
@@ -315,7 +354,7 @@ export function renderVsCode(
 export function renderHost(
   host: Host,
   sources: readonly Source[],
-  config: Pick<ResolvedConfig, 'models'>,
+  config: HostSetup,
   platform: NodeJS.Platform = process.platform,
 ): RenderedFile[] {
   return host === 'claude-code'

@@ -41,8 +41,9 @@ into your repository.
 - **Two hosts:** Claude Code and VS Code agent mode (GitHub Copilot), from the same agents,
   commands and skills.
 - **Plans that follow the code:** a static map of routes, permission guards, links, API calls,
-  feature flags and test IDs; an optional crawl per persona; and story-scoped retrieval. It can
-  also use your team's existing knowledge graph.
+  feature flags and test IDs; an optional crawl per persona; and story-scoped retrieval. Already
+  have a knowledge graph of your code as an MCP server? `/tessa-connect-graph` checks it and
+  teaches Tessa to use it.
 - **You stay signed in, Tessa stays out:** sign-in always happens by hand, in your host's browser.
   Tessa has no tool that takes a password.
 - **Safe database seeding, or none:** only the SQL files you list, only against local hosts on your
@@ -84,6 +85,7 @@ Claude Code plugin and the browser setup for each host.
 | `/tessa-diff [run-a] [run-b]`      | Compare two runs and triage what changed                                          |
 | `/tessa-export [run] [target]`     | Export the selected tests and propose them for your repository                    |
 | `/tessa-refresh-context [crawl]`   | Rebuild the frontend map, and optionally crawl the app per persona                |
+| `/tessa-connect-graph [server]`    | Connect a knowledge graph of the codebase you already run as an MCP server        |
 
 [docs/USAGE.md](docs/USAGE.md) walks through a first run, the config, what Tessa writes in your
 repository, and troubleshooting.
