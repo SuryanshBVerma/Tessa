@@ -1,8 +1,10 @@
 # Tessa — Architecture
 
-Tessa is packaged as a plugin that bundles skills, agents, commands, one MCP server (`tessa-mcp`),
-and config templates. Agents and skills hold judgment; the MCP server holds every deterministic or
-side-effecting operation. JSON schemas are the contracts between all parts.
+Tessa is a set of host-neutral agents, commands and skills plus one MCP server, `tessa-mcp`,
+shipped together as the `tessa-qa` package (and as a Claude Code plugin). Agents and skills hold
+judgement; the MCP server holds every deterministic or side-effecting operation. JSON schemas are
+the contracts between all parts. For installing and using Tessa, see [INSTALL.md](INSTALL.md) and
+[USAGE.md](USAGE.md); for the threat model, [SECURITY.md](SECURITY.md).
 
 ## 1. End-to-end flow
 
@@ -58,15 +60,16 @@ Stack adapters are the main extension point: an adapter skill plus an extractor 
 | Evidence & results | `begin_run`, `capture_env_state`, `record_step`, `write_results`                                                                                                                                      |
 | Review             | `render_report`, `serve_review`, `get_selection`, `record_selection`, `stop_review`                                                                                                                   |
 | Runs               | `list_runs`, `failed_test_ids`, `diff_runs`, `annotate_diff`, `record_triage`                                                                                                                         |
+| Hosts              | `write_host_files` — writes the agents, commands, skills and MCP entry for Claude Code or VS Code                                                                                                     |
 | Export             | `emit_tests(selection, target)`, `update_export_file`, `validate_export`, `capture_session`, `propose_handoff`, `apply_handoff`                                                                       |
 
-Internal modules: static extractor + framework adapters (ts-morph / tree-sitter), context query
-router, report renderer (fixed HTML/CSS/JS template), review server, emitters per target, run diff
-engine, export validator.
+Internal modules: static extractor with framework adapters (the TypeScript compiler API), context
+query router, report and diff renderers (fixed HTML/CSS/JS templates), review server, emitters per
+target, run diff engine, export validator, host writers.
 
-External capabilities (used, not built): the host's browser (the VS Code agent browser or Claude Code's
-browser) by default, optional knowledge graph, optional story source (Jira/Azure DevOps, read-only,
-post-v1.0).
+External capabilities (used, not built): the host's browser (VS Code's integrated browser tools,
+or a Playwright MCP server in Claude Code), an optional knowledge graph, and later an optional
+story source (Jira/Azure DevOps, read-only, after v1.0).
 
 ### Sign-in
 
@@ -75,6 +78,10 @@ a session, the executor opens the app's `auth.login_path`, asks the user to sign
 them to confirm. The host browser keeps the session (and offers its own dev tools), so Tessa never
 sees, stores or replays credentials or session state. To switch persona, the executor asks the user
 to sign out and sign in again as that persona.
+
+Exported tests need sessions of their own. For validating an export, `capture_session` opens
+Playwright's browser so the user signs in by hand; Playwright saves the storage state to the
+gitignored `.session/` folder, and Tessa passes only the file's path.
 
 ## 5. Frontend context layers
 
@@ -118,7 +125,7 @@ Each test card shows:
 - **Quality signals:** selector stability, rerun consistency, overlap with other tests.
 - **Code preview:** collapsed, in the configured target framework.
 
-Page features: a checkbox per card, filters (status, persona, story), "select all passing", and a sticky footer with the selection count and an Export button.
+Page features: a checkbox per test, filters by status and persona, "Select passing", and a sticky footer with the selection count and an Export button. Details open and close per test, so the list stays short.
 
 **Review server:** served by `tessa-mcp` on `127.0.0.1`, random port, per-session token in the URL,
 shut down at session end or idle timeout. Export writes `selection.json`, which the agent picks up.
@@ -128,24 +135,36 @@ command instead.
 ## 8. Export pipeline
 
 1. **Deterministic emitter** per target maps the IR to framework code. v1.0: Playwright TS,
-   Playwright .NET. Later: Cypress TS, Selenium C#/Java. (Cypress is JS/TS only; for C# the options
-   are Playwright .NET or Selenium.)
-2. **Convention pass (LLM, optional)** adapts to page objects, fixtures, naming, helpers.
-3. **Validation** compiles/lints and runs each test once headless; failures are flagged in `export-summary.md`.
+   Playwright .NET (NUnit). Later: Cypress TS, Selenium C#/Java. (Cypress is JS/TS only; for C#
+   the options are Playwright .NET or Selenium.) Config accepts the later targets; `emit_tests`
+   says there is no emitter for them yet.
+2. **Convention pass (LLM, optional)** adapts to page objects, fixtures, naming, helpers. It edits
+   test and page-object files only; project and runner files stay as the emitter wrote them.
+3. **Validation** type-checks or builds the export and, with `run_once`, runs each test once
+   headless; results go to `export-summary.md`. Run-once is built but not yet verified outside
+   the development machine.
+4. **Handoff** proposes the diff into the repository's test folder and writes it only with the
+   proposal's id, after the user confirms.
 
-Auth in exported tests uses stored sessions (Playwright storage state, `cy.session`), with values
-from environment variables. Credentials are never written into test code. Target `auto` detects the
-framework from `package.json`, `*.csproj`, `pom.xml`, and asks when ambiguous.
+Auth in exported tests uses stored sessions (Playwright storage state), whose paths come from
+`TESSA_AUTH_<PERSONA>` environment variables. Credentials are never written into test code.
+Target `auto` detects the framework from `package.json`, `*.csproj` and `pom.xml`, and asks
+when ambiguous.
 
 ## 9. Reruns and diffs
 
-`/tessa-rerun-failed [run]` reruns only failed tests via `failed_test_ids`. `/tessa-diff <runA> <runB>`
-compares runs and writes JSON + HTML to `diffs/`. Triage interprets the diff.
+`/tessa-rerun-failed [run]` reruns only failed tests via `failed_test_ids`; the new run records
+`rerun_of`. `/tessa-diff [runA] [runB]` compares two runs of a story and writes JSON + HTML to
+`diffs/`: each test is fixed, regressed, still failing, still passing, added, removed, or changed
+(skipped on one side). A rerun is compared only on the tests it repeated. The diff lists files
+changed between the two runs' commits, leaving out the artifacts root. Triage interprets it with
+`annotate_diff`, and records each failure's class with `record_triage`.
 
 ## 10. Model configuration
 
-Each role's model is set in config or left `auto`. `/tessa-init` (or `/tessa-sync-models`) writes the
-configured model into each agent definition file, so config stays the single source of truth.
+Each role's model is set in config or left `auto`. `/tessa-init` (through `write_host_files`) and
+`tessa-qa install` write the configured model into each agent file, so config stays the single
+source of truth.
 `auto` policy: planner and triage use the strongest reasoning model; executor needs reliable tool
 use and vision; exporter and context builder can use a mid-tier model; orchestrator inherits the
 host model. If the host lacks per-agent models, everything inherits and the report records what was used.
@@ -159,22 +178,22 @@ agent reports for itself, in `results.json`, and the report header shows them.
 
 ## 11. Commands
 
-| Command                            | Action                                                               |
-| ---------------------------------- | -------------------------------------------------------------------- |
-| `/tessa-init`                      | Scaffold config, detect stack, write model settings into agent files |
-| `/tessa-refresh-context`           | Rebuild the frontend map and run the crawl                           |
-| `/tessa-test-story <id or text>`   | Full flow (section 1)                                                |
-| `/tessa-run <story> [test-id ...]` | Run an approved plan without replanning                              |
-| `/tessa-rerun-failed [run]`        | Rerun failed tests only                                              |
-| `/tessa-diff <runA> <runB>`        | Compare two runs                                                     |
-| `/tessa-export [run]`              | Open review and export selected tests                                |
+| Command                            | Action                                                              |
+| ---------------------------------- | ------------------------------------------------------------------- |
+| `/tessa-init`                      | Scaffold config, detect stack, write host files with model settings |
+| `/tessa-refresh-context`           | Rebuild the frontend map and run the crawl                          |
+| `/tessa-test-story <id or text>`   | Full flow (section 1)                                               |
+| `/tessa-run <story> [test-id ...]` | Run an approved plan without replanning                             |
+| `/tessa-rerun-failed [run]`        | Rerun failed tests only                                             |
+| `/tessa-diff <runA> <runB>`        | Compare two runs                                                    |
+| `/tessa-export [run]`              | Open review and export selected tests                               |
 
 ## 12. Schemas
 
 `config.schema.json`, `test-ir.schema.json`, `results.schema.json`, `selection.schema.json`,
 `run-diff.schema.json`. Defined first; everything else depends on them.
 
-## 13. Config (target shape)
+## 13. Config (example)
 
 ```yaml
 app:
@@ -243,25 +262,36 @@ models:
 ai-test-artifacts/
   context/          frontend-map.json, runtime-map.json, hints.md      (commit)
   plans/<story>/    tests.json, plan.md                                (commit)
-  runs/<ts>/        results.json, report.html, screenshots/, env-state.json   (gitignore)
+  runs/<run-id>/    results.json, report.html, screenshots/, env-state.json   (gitignore)
   diffs/            <runA>__<runB>.json + .html                        (gitignore)
   export/<fw>/      generated tests, export-summary.md                 (commit after review)
-  .session/         reserved for exported tests' storage state         (gitignore)
+  .session/         storage state captured for validating exports      (gitignore)
 ```
 
-## 15. Plugin layout (this repo, target)
+## 15. Repository and package layout
 
 ```
-agents/        orchestrator, context-builder, planner, executor, triage, exporter (host-neutral)
-skills/        story-analysis, ui-flow-discovery, test-planning, browser-execution,
-               failure-triage, export-conventions, adapter-<framework>/
-commands/      tessa-init, tessa-refresh-context, tessa-test-story, tessa-rerun-failed, tessa-diff, tessa-export
-mcp-server/    src/{config,app,db,context,results,review,runs,export}, emitters/, extractors/, templates/report/
-schemas/       *.schema.json
-templates/     config.yaml, kg-mapping.yaml, hints.md, gitignore
-testing/       sample-app/ and other test targets used during development
-docs/          ARCHITECTURE.md
+agents/              orchestrator, context-builder, planner, executor, triage, exporter (host-neutral)
+skills/              story-analysis, ui-flow-discovery, test-planning, browser-execution,
+                     failure-triage, export-conventions, adapter-<framework>/
+commands/            tessa-init, tessa-refresh-context, tessa-test-story, tessa-run,
+                     tessa-rerun-failed, tessa-diff, tessa-export
+mcp-server/          the tessa-qa package
+  src/               app, config, context (extractors, adapters), db, export (emitters), hosts,
+                     init, plans, report, results, runs, schemas, util; server.ts, cli.ts, bin.ts
+  templates/         report/ and diff/ page templates
+  scripts/           schema type generation, pack-assets (copies the folders below into the
+                     package), build-plugin
+schemas/             *.schema.json
+templates/           config.yaml, kg-mapping.yaml, hints.md, gitignore (written by /tessa-init)
+plugins/claude-code/ the generated Claude Code plugin; .claude-plugin/marketplace.json lists it
+testing/             sample-app/, the app Tessa is developed against
+docs/                INSTALL, USAGE, ARCHITECTURE, SECURITY
 ```
+
+The published package carries `schemas/`, `agents/`, `commands/`, `skills/` and the init
+templates (as `init-templates/`) beside `dist/`; the server finds them there, or in the
+repository when run from a clone.
 
 Agent content stays host-neutral; `write_host_files` (run by `/tessa-init`) writes it in the
 format of the host. Every generated file carries a `tessa-generated` marker; only marked files
@@ -278,5 +308,6 @@ are replaced or removed, and JSON configs gain only Tessa's own entry.
 | `browser`                       | Playwright MCP server named `playwright`                                                               | Integrated browser tool set `browser`                                |
 | MCP server                      | `.mcp.json` → `npx -y tessa-qa@<version> mcp`                                                          | `.vscode/mcp.json` → same, with `--workspace`                        |
 
-Commands never pre-approve `apply_handoff`, `init_workspace` or `reset_db` in Claude Code, so
-the host still asks before each call.
+In Claude Code, commands never pre-approve `apply_handoff`, `init_workspace`, `reset_db`,
+`validate_export`, `capture_session`, `approve_plan`, `record_selection` or `write_host_files`,
+so the host still asks before each call.

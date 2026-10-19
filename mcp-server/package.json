@@ -3,6 +3,15 @@
   "version": "0.9.1",
   "description": "Agentic tester for VS Code agent mode and Claude Code: plans tests from a user story, runs them in the browser with you, reports, and exports the ones you keep to Playwright.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SuryanshBVerma/Tessa.git",
+    "directory": "mcp-server"
+  },
+  "homepage": "https://github.com/SuryanshBVerma/Tessa#readme",
+  "bugs": {
+    "url": "https://github.com/SuryanshBVerma/Tessa/issues"
+  },
   "type": "module",
   "keywords": [
     "testing",

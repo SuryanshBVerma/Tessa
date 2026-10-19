@@ -3,6 +3,10 @@
   "private": true,
   "description": "Agentic tester for VS Code agent mode and Claude Code",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SuryanshBVerma/Tessa.git"
+  },
   "type": "module",
   "engines": {
     "node": ">=24"

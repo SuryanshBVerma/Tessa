@@ -1,30 +1,45 @@
 # tessa-qa
 
-Tessa is an agentic tester for Claude Code and VS Code agent mode. It reads a user story and the
-code, plans tests for you to approve, runs them in the browser while you sign in, writes an HTML
-report, and exports the tests you keep to Playwright TS or Playwright .NET.
+**An agentic tester for Claude Code and VS Code agent mode.** Tessa reads a user story and your
+code, plans the tests a careful manual tester would run, and runs them in your host's browser
+while you sign in. You get an HTML report, and the tests you pick export to Playwright TS or
+Playwright .NET. You approve the plan, sign in yourself, choose the tests, and confirm before
+anything is written into your repository.
 
 This package holds the `tessa-mcp` server, which owns every deterministic or side-effecting
-operation, and the agents, commands and skills Tessa installs into your host.
+operation, the `tessa-qa` command line, and the agents, commands and skills Tessa installs into
+your host.
+
+- Repository: https://github.com/SuryanshBVerma/Tessa
+- Install guide: https://github.com/SuryanshBVerma/Tessa/blob/main/docs/INSTALL.md
+- Usage guide: https://github.com/SuryanshBVerma/Tessa/blob/main/docs/USAGE.md
+- Security: https://github.com/SuryanshBVerma/Tessa/blob/main/docs/SECURITY.md
 
 ## Install
 
-In the repository you want to test (Node 24 or later):
+In the root of the repository you want to test (Node 24 or later):
 
 ```bash
-npx tessa-qa@<version> install --host claude-code    # or --host vscode-agent
+npx tessa-qa install --host claude-code --dry-run   # preview
+npx tessa-qa install --host claude-code             # or --host vscode-agent
 ```
 
-Then restart the host, approve the `tessa-mcp` server, and run `/tessa-init`. Claude Code users
-can install the plugin instead; see docs/INSTALL.md in the repository.
+Then restart the host, approve the `tessa-mcp` server, and run `/tessa-init`.
 
 `install` writes `.claude/` and `.mcp.json`, or `.github/agents`, `.github/prompts`,
 `.github/skills` and `.vscode/mcp.json`. It replaces only files it wrote before, adds only its
-own entry to the MCP config, and pins the server to the installed version. Preview with
-`--dry-run`.
+own entry to the MCP config, and pins the server to the installed version.
 
 The server only allows local databases and app URLs, never automates sign-in, and keeps run
 output (screenshots included) in gitignored folders.
+
+## Command line
+
+| Command                                                                                             | What it does                                  |
+| --------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `tessa-qa install --host <claude-code\|vscode-agent> [--dry-run] [--overwrite] [--workspace <dir>]` | Write Tessa's host files and MCP entry        |
+| `tessa-qa mcp [--workspace <dir>]`                                                                  | Serve `tessa-mcp` over stdio (what hosts run) |
+| `tessa-qa version`                                                                                  | Print the version                             |
 
 ## Tools
 
