@@ -93,6 +93,28 @@ describe('tessa-mcp server', () => {
     expect(after.isError).toBe(true);
   });
 
+  it('init_workspace previews only what the user reviews, however large .gitignore is', async () => {
+    const workspace = sampleWorkspace();
+    // A .NET-sized .gitignore: hundreds of lines Tessa leaves alone.
+    writeFileSync(
+      join(workspace, '.gitignore'),
+      Array.from({ length: 600 }, (_, i) => `generated-${String(i)}/`).join('\n'),
+    );
+    const client = await connect(workspace);
+    const { data } = await call(client, 'init_workspace', { ...SAMPLE_INIT, dry_run: true });
+    const byPath = Object.fromEntries(data.files.map((f: any) => [f.path, f]));
+    expect(byPath['.gitignore']).toMatchObject({
+      action: 'updated',
+      reason: 'adds this block at the end; the rest of the file is unchanged',
+    });
+    expect(byPath['.gitignore'].preview).toContain('# >>> tessa');
+    expect(byPath['.gitignore'].preview).not.toContain('generated-0/');
+    expect(byPath['ai-test-artifacts/context/hints.md'].preview).toBeUndefined();
+    expect(byPath['ai-test-artifacts/context/hints.md'].reason).toMatch(/hints template/);
+    expect(byPath['.tessa/config.yaml'].preview).toContain('stack: react-router');
+    expect(JSON.stringify(data).length).toBeLessThan(8000);
+  });
+
   it('initialises the sample app so load_config succeeds', async () => {
     const workspace = sampleWorkspace();
     const client = await connect(workspace);

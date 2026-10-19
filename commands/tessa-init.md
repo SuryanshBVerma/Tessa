@@ -7,6 +7,8 @@ tools:
     tessa-mcp/validate_config,
     tessa-mcp/load_config,
     tessa-mcp/write_host_files,
+    read,
+    search,
   ]
 ---
 
@@ -51,7 +53,10 @@ URL from the environment variable named in `db.url_env` and the user always sign
 ## 3. Preview, then write
 
 1. Call `init_workspace` with the gathered values and `dry_run: true`.
-2. Show the user the files it will create or update and any issues it reports.
+2. Show the user the files it will create or update and any issues it reports: the config's
+   `preview` in full, and for the other files their `reason` and preview (for `.gitignore`, only
+   the block Tessa adds). If your host saved the result to a file because it was long, read that
+   file.
 3. Only after the user confirms, call `init_workspace` again without `dry_run`.
    Pass `overwrite: true` only if the user explicitly asked to replace an existing config.
 

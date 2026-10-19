@@ -23,6 +23,7 @@ tools:
     tessa-executor,
     tessa-triage,
     browser,
+    read,
   ]
 ---
 

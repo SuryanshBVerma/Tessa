@@ -19,6 +19,7 @@ tools:
     tessa-mcp/record_triage,
     tessa-triage,
     browser,
+    read,
   ]
 ---
 

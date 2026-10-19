@@ -20,6 +20,14 @@ before 1.0, each minor version is one phase of the plan.
   the frontend map reads routes, source globs and tsconfig aliases from there.
 - The planner, executor and context builder follow the adapter skill for the app's stack.
 
+### Fixed
+
+- The `init_workspace` dry run no longer returns the whole `.gitignore` and hints template;
+  it previews the config, Tessa's `.gitignore` block and a line count for the hints. On a large
+  repository the full result was too long for hosts to show.
+- Every command and agent can read files, so a long tool result a host saves to a file can be
+  opened; `/tessa-init` can also search, to find seed scripts.
+
 ## 0.9.1 — 2026-10-16
 
 ### Fixed

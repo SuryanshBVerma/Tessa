@@ -1,6 +1,6 @@
 ---
 description: Set up Tessa in this repository - detect the stack, write .tessa/config.yaml, hints and .gitignore entries.
-allowed-tools: mcp__plugin_tessa-qa_tessa-mcp__detect_stack, mcp__plugin_tessa-qa_tessa-mcp__validate_config, mcp__plugin_tessa-qa_tessa-mcp__load_config
+allowed-tools: mcp__plugin_tessa-qa_tessa-mcp__detect_stack, mcp__plugin_tessa-qa_tessa-mcp__validate_config, mcp__plugin_tessa-qa_tessa-mcp__load_config, Read, Grep, Glob
 ---
 
 <!-- tessa-generated: written by tessa-qa 0.9.1 from commands/tessa-init.md. Edits are overwritten; change .tessa/config.yaml or the source instead. -->
@@ -46,7 +46,10 @@ URL from the environment variable named in `db.url_env` and the user always sign
 ## 3. Preview, then write
 
 1. Call `init_workspace` with the gathered values and `dry_run: true`.
-2. Show the user the files it will create or update and any issues it reports.
+2. Show the user the files it will create or update and any issues it reports: the config's
+   `preview` in full, and for the other files their `reason` and preview (for `.gitignore`, only
+   the block Tessa adds). If your host saved the result to a file because it was long, read that
+   file.
 3. Only after the user confirms, call `init_workspace` again without `dry_run`.
    Pass `overwrite: true` only if the user explicitly asked to replace an existing config.
 

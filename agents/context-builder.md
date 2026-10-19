@@ -12,6 +12,7 @@ tools:
     tessa-mcp/stop_app,
     tessa-mcp/record_crawl,
     browser,
+    read,
   ]
 model: auto
 ---

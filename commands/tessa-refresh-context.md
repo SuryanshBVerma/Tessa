@@ -11,6 +11,7 @@ tools:
     tessa-mcp/record_crawl,
     tessa-context-builder,
     browser,
+    read,
   ]
 ---
 

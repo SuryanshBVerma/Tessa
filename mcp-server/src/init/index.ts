@@ -32,7 +32,10 @@ export interface FileAction {
   path: string;
   action: 'created' | 'updated' | 'unchanged' | 'skipped';
   reason?: string;
-  /** File content, only for dry runs. */
+  /**
+   * Dry runs only: what the user should review. The whole config; for .gitignore, only Tessa's
+   * block; nothing for the hints template, which the user fills in afterwards.
+   */
   preview?: string;
 }
 
@@ -121,19 +124,32 @@ export function mergeGitignore(existing: string, block: string): string {
   return `${existing}${existing.endsWith('\n') ? '' : '\n'}\n${block}`;
 }
 
+/** Longest preview returned; agents show it to the user, and hosts cut long tool results. */
+const MAX_PREVIEW_CHARS = 6000;
+
 function writeFile(
   workspace: string,
   relPath: string,
   content: string,
   dryRun: boolean,
   existing: string | null,
+  review: { preview?: string; reason?: string } = { preview: content },
 ): FileAction {
   if (existing === content) {
     return { path: relPath, action: 'unchanged' };
   }
   const action = existing === null ? 'created' : 'updated';
   if (dryRun) {
-    return { path: relPath, action, preview: content };
+    const preview =
+      review.preview === undefined || review.preview.length <= MAX_PREVIEW_CHARS
+        ? review.preview
+        : `${review.preview.slice(0, MAX_PREVIEW_CHARS)}\n... (cut; ${String(review.preview.length - MAX_PREVIEW_CHARS)} more characters)`;
+    return {
+      path: relPath,
+      action,
+      ...(preview === undefined ? {} : { preview }),
+      ...(review.reason === undefined ? {} : { reason: review.reason }),
+    };
   }
   const absolute = resolveInside(workspace, relPath);
   mkdirSync(dirname(absolute), { recursive: true });
@@ -197,14 +213,30 @@ export function initWorkspace(workspace: string, options: InitOptions = {}): Ini
   const hintsPath = `${artifactsRoot}/context/hints.md`;
   const existingHints = readIfExists(workspace, hintsPath);
   if (existingHints === null) {
-    files.push(writeFile(workspace, hintsPath, template('hints.md'), dryRun, null));
+    const hints = template('hints.md');
+    files.push(
+      writeFile(workspace, hintsPath, hints, dryRun, null, {
+        reason: `hints template (${String(hints.split('\n').length)} lines) for the user to fill in`,
+      }),
+    );
   } else {
     files.push({ path: hintsPath, action: 'unchanged', reason: 'hints are never replaced' });
   }
 
   const existingIgnore = readIfExists(workspace, '.gitignore');
-  const mergedIgnore = mergeGitignore(existingIgnore ?? '', buildGitignoreBlock(artifactsRoot));
-  files.push(writeFile(workspace, '.gitignore', mergedIgnore, dryRun, existingIgnore));
+  const block = buildGitignoreBlock(artifactsRoot);
+  const mergedIgnore = mergeGitignore(existingIgnore ?? '', block);
+  files.push(
+    writeFile(workspace, '.gitignore', mergedIgnore, dryRun, existingIgnore, {
+      preview: block,
+      reason:
+        existingIgnore === null
+          ? 'new file with this block'
+          : existingIgnore.includes(GITIGNORE_START)
+            ? "replaces Tessa's block; the rest of the file is unchanged"
+            : 'adds this block at the end; the rest of the file is unchanged',
+    }),
+  );
 
   return { ok: true, dry_run: dryRun, detected, files, issues };
 }

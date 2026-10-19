@@ -9,6 +9,7 @@ tools:
     tessa-mcp/record_step,
     tessa-mcp/write_results,
     browser,
+    read,
   ]
 model: auto
 ---

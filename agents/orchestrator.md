@@ -21,6 +21,7 @@ tools:
     tessa-executor,
     tessa-triage,
     tessa-exporter,
+    read,
   ]
 model: auto
 ---
