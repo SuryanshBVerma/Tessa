@@ -3,6 +3,20 @@
 All notable changes, newest first. Versions follow [Semantic Versioning](https://semver.org/);
 before 1.0, each minor version is one phase of the plan.
 
+## Unreleased
+
+### Added
+
+- Angular adapter: routes from standalone `provideRouter` and NgModule `forRoot`/`forChild`,
+  through lazy `loadComponent` and `loadChildren`; route guards (`canActivate`, `canMatch`,
+  `canActivateChild`) and role lists in route `data`; component templates (inline and
+  `templateUrl`) with test ids, labels, text, `routerLink` targets and permission checks in
+  `@if`, `*ngIf` and custom directives; `HttpClient` calls. With the `adapter-angular` skill
+  for Angular Material, overlays and reactive forms.
+- The frontend map follows `tsconfig` path aliases for every stack.
+- `detect_stack` suggests the stack's usual dev server URL (`url_hint`).
+- The planner, executor and context builder follow the adapter skill for the app's stack.
+
 ## 0.9.1 — 2026-10-16
 
 ### Fixed

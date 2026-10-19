@@ -36,17 +36,23 @@ Subagents get narrow context and return structured artifacts, not prose.
 
 ## 3. Skills
 
-| Skill                 | Purpose                                                                                            |
-| --------------------- | -------------------------------------------------------------------------------------------------- |
-| `story-analysis`      | Acceptance criteria, personas, edge cases, implicit requirements                                   |
-| `ui-flow-discovery`   | Using context queries to understand screens, guards, navigation                                    |
-| `adapter-<framework>` | Where routes, guards, permissions, test IDs live (React Router first; Next.js, Angular, Vue later) |
-| `test-planning`       | Neutral test format rules, coverage heuristics, persona × permission matrices, dedup               |
-| `browser-execution`   | Step protocol, waits, evidence capture, the sign-in pause in the host browser                      |
-| `failure-triage`      | Failure classes and the evidence each needs                                                        |
-| `export-conventions`  | Detecting and following page objects, fixtures, naming, layout                                     |
+| Skill                 | Purpose                                                                                         |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| `story-analysis`      | Acceptance criteria, personas, edge cases, implicit requirements                                |
+| `ui-flow-discovery`   | Using context queries to understand screens, guards, navigation                                 |
+| `adapter-<framework>` | Where routes, guards, permissions, test IDs live (React Router and Angular; Next.js, Vue later) |
+| `test-planning`       | Neutral test format rules, coverage heuristics, persona × permission matrices, dedup            |
+| `browser-execution`   | Step protocol, waits, evidence capture, the sign-in pause in the host browser                   |
+| `failure-triage`      | Failure classes and the evidence each needs                                                     |
+| `export-conventions`  | Detecting and following page objects, fixtures, naming, layout                                  |
 
 Stack adapters are the main extension point: an adapter skill plus an extractor adapter in code.
+An adapter finds the route tree and may read modules its own way: the Angular adapter follows
+`Routes` arrays through lazy `loadComponent`/`loadChildren` (standalone or NgModule), keeps
+route-level guards (`canActivate`, `canMatch`, role lists in route `data`) on the route, and
+scans each component's template (inline or `templateUrl`) for selectors, `routerLink` targets
+and permission checks. Template files are hashed with the module, so editing only the HTML
+re-reads the component. Both adapters follow `tsconfig` path aliases.
 
 ## 4. MCP server: `tessa-mcp`
 

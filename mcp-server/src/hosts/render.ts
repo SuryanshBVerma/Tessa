@@ -118,10 +118,19 @@ function delegates(source: Source): boolean {
   return toolRefs(source).agents.length > 0;
 }
 
-/** Skills an agent's instructions name in backticks, so a Claude Code subagent preloads them. */
+/**
+ * Skills an agent's instructions name in backticks, so a Claude Code subagent preloads them. An
+ * agent that refers to "the adapter skill" gets every stack adapter, since the stack is only
+ * known at run time.
+ */
 export function referencedSkills(source: Source, sources: readonly Source[]): string[] {
+  const adapters = /adapter skill/i.test(source.body);
   return sources
-    .filter((s) => s.kind === 'skill' && source.body.includes(`\`${s.name}\``))
+    .filter(
+      (s) =>
+        s.kind === 'skill' &&
+        (source.body.includes(`\`${s.name}\``) || (adapters && s.name.startsWith('adapter-'))),
+    )
     .map((s) => s.name);
 }
 

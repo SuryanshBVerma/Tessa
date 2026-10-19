@@ -11,6 +11,8 @@ export default tseslint.config(
       '**/node_modules/',
       '**/coverage/',
       'Context/',
+      // Source-only Angular apps the adapter tests read; their imports are never installed.
+      'testing/fixtures/',
       '**/src/schemas/generated/*.ts',
       '!**/src/schemas/generated/index.ts',
     ],

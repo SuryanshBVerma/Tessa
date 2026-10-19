@@ -11,6 +11,11 @@ export interface RouteNode {
   kind: 'route' | 'index' | 'layout';
   parent?: string;
   children: string[];
+  /**
+   * Guards declared on the route itself rather than in its module, such as Angular's canActivate
+   * and canMatch, and role or permission lists in the route's data.
+   */
+  guards?: Guard[];
 }
 
 export type SelectorKind = 'testid' | 'role' | 'aria-label' | 'label' | 'placeholder' | 'text';
@@ -23,6 +28,8 @@ export interface Selector {
   /** The JSX element the selector is on, e.g. "button" or "NavLink". */
   element: string;
   line: number;
+  /** The file the selector is in, when it is not the module itself (an Angular templateUrl). */
+  source?: string;
 }
 
 export interface Guard {
@@ -30,7 +37,11 @@ export interface Guard {
   call: string;
   /** String-literal arguments, usually the permission or role names. */
   args: string[];
-  /** Where it is called: a route export (loader, action, component) or another function. */
+  /**
+   * Where it is called: a route export (loader, action, component) or another function; for a
+   * route-level guard, the route hook (canActivate, canMatch, ...) or "route-data"; for an
+   * Angular template, "template".
+   */
   in: string;
   line: number;
 }
@@ -67,6 +78,8 @@ export interface ModuleInfo {
   links: Link[];
   api: ApiCall[];
   flags: FlagUse[];
+  /** Other files this module's extraction read, such as an Angular templateUrl. */
+  assets?: string[];
 }
 
 export interface FrontendMap {

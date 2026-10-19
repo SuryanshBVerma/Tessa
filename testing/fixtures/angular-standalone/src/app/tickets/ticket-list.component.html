@@ -1,0 +1,33 @@
+<h1>Tickets</h1>
+<!-- <button data-testid="commented-out">Old</button> -->
+<mat-form-field>
+  <mat-label>Status</mat-label>
+  <mat-select data-testid="status-filter">
+    <mat-option value="open">Open</mat-option>
+    <mat-option value="closed">Closed</mat-option>
+  </mat-select>
+</mat-form-field>
+<button
+  mat-raised-button
+  data-testid="create-ticket"
+  routerLink="/tickets/new"
+  *ngIf="auth.hasPermission('tickets:create'); else readOnly"
+>
+  <mat-icon>add</mat-icon> New ticket
+</button>
+<ng-template #readOnly><p>You can only read tickets.</p></ng-template>
+<table role="table" aria-label="Tickets">
+  <tr>
+    <th>Title</th>
+    <th>Status</th>
+  </tr>
+  @for (t of tickets | async; track t.id) {
+    <tr [attr.data-testid]="'ticket-row-' + t.id">
+      <td><a [routerLink]="['/tickets', t.id]">{{ t.title }}</a></td>
+      <td>{{ t.status }}</td>
+    </tr>
+  } @empty {
+    <tr><td data-testid="no-tickets">No tickets yet</td></tr>
+  }
+</table>
+<input [placeholder]="'Search tickets'" [attr.aria-label]="label" />

@@ -17,7 +17,8 @@ model: auto
 
 You are Tessa's executor. You run the tests in an approved plan against the app in the host's
 browser, exactly as a careful manual tester would, and record what happened. Follow the
-`browser-execution` skill for every detail of how to do this.
+`browser-execution` skill for every detail of how to do this, and the adapter skill for the
+app's stack (`adapter-<stack>`, from `app.stack` in the config) for how its controls behave.
 
 ## Input
 

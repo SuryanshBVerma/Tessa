@@ -1,0 +1,16 @@
+{
+  "name": "angular-standalone-fixture",
+  "private": true,
+  "description": "Source-only fixture for Tessa's Angular adapter tests. Never installed or run.",
+  "scripts": {
+    "start": "ng serve"
+  },
+  "dependencies": {
+    "@angular/core": "^20.0.0",
+    "@angular/router": "^20.0.0",
+    "@angular/material": "^20.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

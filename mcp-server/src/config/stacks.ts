@@ -23,6 +23,8 @@ export interface StackReport {
   package_manager: 'npm' | 'pnpm' | 'yarn' | 'bun' | null;
   /** Suggested app start command, from package.json scripts. */
   start_command: string | null;
+  /** The stack's usual dev server URL, to suggest for app.url; the user confirms it. */
+  url_hint: string | null;
   /** True when more than one export target matched and the user must choose. */
   export_target_ambiguous: boolean;
 }
@@ -42,6 +44,12 @@ const STACK_RULES: { name: string; packages: string[] }[] = [
   { name: 'vue', packages: ['vue'] },
   { name: 'svelte', packages: ['svelte'] },
 ];
+
+/** Default dev server addresses: Vite for React Router, the Angular CLI's ng serve. */
+const URL_HINTS: Record<string, string> = {
+  'react-router': 'http://localhost:5173',
+  angular: 'http://localhost:4200',
+};
 
 const NODE_EXPORT_RULES: { name: ExportTarget; packages: string[] }[] = [
   { name: 'playwright-ts', packages: ['@playwright/test'] },
@@ -157,6 +165,7 @@ export function detectStack(workspace: string): StackReport {
     export_targets: exportTargets,
     package_manager: packageManager,
     start_command: startCommand,
+    url_hint: best === undefined ? null : (URL_HINTS[best.name] ?? null),
     export_target_ambiguous: new Set(exportTargets.map((t) => t.name)).size > 1,
   };
 }

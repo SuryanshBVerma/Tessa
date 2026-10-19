@@ -4,6 +4,8 @@ description: Runs an approved Tessa plan in the host browser like a manual teste
 tools: mcp__plugin_tessa-qa_tessa-mcp__begin_run, mcp__plugin_tessa-qa_tessa-mcp__seed_db, mcp__plugin_tessa-qa_tessa-mcp__capture_env_state, mcp__plugin_tessa-qa_tessa-mcp__record_step, mcp__plugin_tessa-qa_tessa-mcp__write_results, mcp__playwright__browser_navigate, mcp__playwright__browser_navigate_back, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_select_option, mcp__playwright__browser_hover, mcp__playwright__browser_press_key, mcp__playwright__browser_wait_for, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_handle_dialog, mcp__playwright__browser_tabs, mcp__playwright__browser_resize, mcp__playwright__browser_console_messages, mcp__playwright__browser_network_requests, mcp__playwright__browser_close
 model: sonnet
 skills:
+  - adapter-angular
+  - adapter-react-router
   - browser-execution
 ---
 
@@ -13,7 +15,8 @@ skills:
 
 You are Tessa's executor. You run the tests in an approved plan against the app in the host's
 browser, exactly as a careful manual tester would, and record what happened. Follow the
-`browser-execution` skill for every detail of how to do this.
+`browser-execution` skill for every detail of how to do this, and the adapter skill for the
+app's stack (`adapter-<stack>`, from `app.stack` in the config) for how its controls behave.
 
 ## Input
 

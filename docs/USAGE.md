@@ -8,8 +8,9 @@ writes in your repository, and what to do when something goes wrong. Install Tes
 
 Tessa tests your app the way a person would, on your machine. It needs:
 
-- **The app, runnable locally** with one command (for example `npm run dev`), on a `localhost` or
-  `127.0.0.1` URL.
+- **The app, runnable locally** with one command (for example `npm run dev` or `npm start`), on a
+  `localhost` or `127.0.0.1` URL. If the frontend talks to a separate backend (common with
+  Angular), start the backend yourself first, or use one script that starts both.
 - **A local development database** and plain `.sql` seed scripts that put it into a known state:
   users for each role, and the data your stories need. Tessa runs only the scripts you list, and
   only against hosts on your allowlist. It never touches a shared or production database.
@@ -177,7 +178,7 @@ when you no longer need them.
 | Symptom                                                        | What to do                                                                                                                                                                |
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | The host does not list `tessa-mcp`, or it fails to start       | Restart the host and approve the server. On Windows with Claude Code, the `.mcp.json` entry must start `cmd /c npx`; the project install writes that, the plugin does not |
-| `/tessa-init` says there is no adapter for your stack          | Only React Router is supported so far. You can continue, but plans will lean on the story and the crawl instead of the code map                                           |
+| `/tessa-init` says there is no adapter for your stack          | React Router and Angular are supported so far. You can continue, but plans will lean on the story and the crawl instead of the code map                                   |
 | Seeding is refused: "not a local host"                         | The database URL points somewhere other than a local host, or the host is not in `db.allowed_hosts`. This check cannot be turned off                                      |
 | Seeding is refused: a `host` or `hostaddr` parameter           | Remove connection overrides from the URL's query string                                                                                                                   |
 | `start_app` refuses the start command                          | Shell syntax (`&&`, pipes, `>`) is not allowed. Point `app.start` at a script, such as `npm run dev`                                                                      |

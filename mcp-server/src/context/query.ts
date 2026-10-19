@@ -155,12 +155,29 @@ export function componentsForRoute(map: FrontendMap, route: string) {
 
 // 3. permissions_for_route
 
+/** Route hooks (Angular's canActivate, canMatch, ...) and route data checked by them. */
+const ROUTE_LEVEL = new Set([
+  'canActivate',
+  'canMatch',
+  'canActivateChild',
+  'canLoad',
+  'route-data',
+]);
+
 function classify(guard: Guard): 'enforced' | 'visibility' {
-  // A require*/ensure* call in a loader or action stops the request; can()/has*() decides what
-  // the UI shows.
-  return /^(require|ensure|assert|authorize)/.test(guard.call) && guard.in !== 'component'
+  // A guard on the route blocks navigation; a require*/ensure* call in a loader or action stops
+  // the request; can()/has*() in a component or template decides what the UI shows.
+  if (ROUTE_LEVEL.has(guard.in)) return 'enforced';
+  return /^(require|ensure|assert|authorize)/.test(guard.call) &&
+    guard.in !== 'component' &&
+    guard.in !== 'template'
     ? 'enforced'
     : 'visibility';
+}
+
+/** Whether a guard is about being signed in at all, rather than a particular permission. */
+function signInGuard(guard: Guard): boolean {
+  return /^require/.test(guard.call) || /auth|login|signed|logged|session/i.test(guard.call);
 }
 
 export function permissionsForRoute(map: FrontendMap, route: string) {
@@ -169,14 +186,28 @@ export function permissionsForRoute(map: FrontendMap, route: string) {
   // Only the route's own chain (layouts and the route module), not shared libraries, where guard
   // helpers are defined rather than used.
   const chain = files.filter((f) => map.routes.some((r) => r.file === f));
-  const guards = chain.flatMap((file) =>
+  const moduleGuards = chain.flatMap((file) =>
     (map.modules[file]?.guards ?? [])
-      .filter((g) => g.args.length > 0 || /^require/.test(g.call))
+      .filter((g) => g.args.length > 0 || signInGuard(g))
       .map((g) => ({ ...g, file, effect: classify(g) })),
   );
+  // Guards declared on the route and its ancestors (Angular): a parent's guard gates its children.
+  const routeGuards: (Guard & {
+    file: string;
+    route: string;
+    effect: 'enforced' | 'visibility';
+  })[] = [];
+  for (let r: RouteNode | undefined = node; r !== undefined;) {
+    for (const g of r.guards ?? []) {
+      routeGuards.push({ ...g, file: r.file, route: r.path, effect: classify(g) });
+    }
+    const parentId: string | undefined = r.parent;
+    r = parentId === undefined ? undefined : map.routes.find((x) => x.id === parentId);
+  }
+  const guards = [...routeGuards, ...moduleGuards];
   return {
     route: describeRoute(node),
-    requires_sign_in: guards.some((g) => /^require/.test(g.call)),
+    requires_sign_in: guards.some(signInGuard),
     enforced: guards.filter((g) => g.effect === 'enforced'),
     visibility: guards.filter((g) => g.effect === 'visibility'),
   };

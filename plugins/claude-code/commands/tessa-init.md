@@ -27,7 +27,7 @@ the export targets.
 Look for seed SQL scripts (folders such as `scripts/seed`, `db/seed`, `seeds`, `prisma`) and
 for the roles the app supports. Then confirm these with the user in one short message:
 
-- **App URL** – must be a local address such as `http://localhost:3000`.
+- **App URL** – must be a local address. Suggest `url_hint` from `detect_stack` if it has one.
 - **Start command** – suggest the detected one.
 - **Seed profiles** – profile name and ordered SQL files, relative to the repository root.
 - **Personas** – one per role worth testing, each with the seed profile it needs.

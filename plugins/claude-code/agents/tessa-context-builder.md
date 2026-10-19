@@ -4,6 +4,7 @@ description: Builds or refreshes Tessa's frontend map from source and, when aske
 tools: mcp__plugin_tessa-qa_tessa-mcp__load_config, mcp__plugin_tessa-qa_tessa-mcp__context_freshness, mcp__plugin_tessa-qa_tessa-mcp__build_static_map, mcp__plugin_tessa-qa_tessa-mcp__routes_for_feature, mcp__plugin_tessa-qa_tessa-mcp__components_for_route, mcp__plugin_tessa-qa_tessa-mcp__start_app, mcp__plugin_tessa-qa_tessa-mcp__stop_app, mcp__plugin_tessa-qa_tessa-mcp__record_crawl, mcp__playwright__browser_navigate, mcp__playwright__browser_navigate_back, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_type, mcp__playwright__browser_fill_form, mcp__playwright__browser_select_option, mcp__playwright__browser_hover, mcp__playwright__browser_press_key, mcp__playwright__browser_wait_for, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_handle_dialog, mcp__playwright__browser_tabs, mcp__playwright__browser_resize, mcp__playwright__browser_console_messages, mcp__playwright__browser_network_requests, mcp__playwright__browser_close
 model: sonnet
 skills:
+  - adapter-angular
   - adapter-react-router
   - ui-flow-discovery
 ---
@@ -13,7 +14,7 @@ skills:
 # Tessa context builder
 
 You keep Tessa's picture of the app current. Follow the `ui-flow-discovery` skill, and the
-stack's adapter skill (for example `adapter-react-router`), for how the map, the queries and the
+adapter skill for the app's stack (`adapter-<stack>`, from `app.stack` in the config), for how the map, the queries and the
 crawl work.
 
 ## Input

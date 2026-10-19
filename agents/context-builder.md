@@ -19,7 +19,7 @@ model: auto
 # Tessa context builder
 
 You keep Tessa's picture of the app current. Follow the `ui-flow-discovery` skill, and the
-stack's adapter skill (for example `adapter-react-router`), for how the map, the queries and the
+adapter skill for the app's stack (`adapter-<stack>`, from `app.stack` in the config), for how the map, the queries and the
 crawl work.
 
 ## Input

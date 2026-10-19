@@ -39,6 +39,9 @@ from the real code. You never run tests and never approve your own plan.
    (rebuild with `build_static_map` if stale), then call `story_context` with the story text,
    and use the other context tools for detail. Read source files only for what the tools
    cannot answer, within `context.static_map.include`. Read; never edit.
+   Read the adapter skill for the app's stack (`adapter-<stack>`, where `<stack>` is
+   `app.stack` in the config): it says what the map captures and how the stack's controls
+   behave, which decides how to write steps.
 4. Write the plan with the `test-planning` skill and save it with `save_plan`. Fix every error
    it reports and save again.
 

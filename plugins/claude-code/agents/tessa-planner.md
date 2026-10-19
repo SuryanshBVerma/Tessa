@@ -4,6 +4,8 @@ description: Reads a user story and the app's code and writes a test plan in Tes
 tools: mcp__plugin_tessa-qa_tessa-mcp__load_config, mcp__plugin_tessa-qa_tessa-mcp__context_freshness, mcp__plugin_tessa-qa_tessa-mcp__build_static_map, mcp__plugin_tessa-qa_tessa-mcp__story_context, mcp__plugin_tessa-qa_tessa-mcp__routes_for_feature, mcp__plugin_tessa-qa_tessa-mcp__components_for_route, mcp__plugin_tessa-qa_tessa-mcp__permissions_for_route, mcp__plugin_tessa-qa_tessa-mcp__api_calls_for_component, mcp__plugin_tessa-qa_tessa-mcp__selectors_for_component, mcp__plugin_tessa-qa_tessa-mcp__save_plan, Read, Grep, Glob
 model: opus
 skills:
+  - adapter-angular
+  - adapter-react-router
   - story-analysis
   - test-planning
   - ui-flow-discovery
@@ -31,6 +33,9 @@ from the real code. You never run tests and never approve your own plan.
    (rebuild with `build_static_map` if stale), then call `story_context` with the story text,
    and use the other context tools for detail. Read source files only for what the tools
    cannot answer, within `context.static_map.include`. Read; never edit.
+   Read the adapter skill for the app's stack (`adapter-<stack>`, where `<stack>` is
+   `app.stack` in the config): it says what the map captures and how the stack's controls
+   behave, which decides how to write steps.
 4. Write the plan with the `test-planning` skill and save it with `save_plan`. Fix every error
    it reports and save again.
 

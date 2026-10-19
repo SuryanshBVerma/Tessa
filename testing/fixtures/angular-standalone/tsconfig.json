@@ -1,0 +1,11 @@
+/* Angular CLI style: comments are allowed here. */
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@app/*": ["src/app/*"],
+      "@core": ["src/app/core/index.ts"],
+      "@outside/*": ["../../elsewhere/*"]
+    }
+  }
+}

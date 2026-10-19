@@ -150,7 +150,10 @@ describe('Claude Code files', () => {
     expect(executor).toContain('mcp__playwright__browser_navigate');
     expect(executor).not.toContain('browser_evaluate');
     expect(executor).toMatch(/\nmodel: sonnet\n/);
-    expect(executor).toMatch(/\nskills:\n {2}- browser-execution\n/);
+    // An agent that follows "the adapter skill" preloads every stack adapter.
+    expect(executor).toMatch(
+      /\nskills:\n {2}- adapter-angular\n {2}- adapter-react-router\n {2}- browser-execution\n/,
+    );
     expect(files['.claude/agents/tessa-planner.md']).toMatch(/\nmodel: opus\n/);
     expect(files['.claude/agents/tessa-planner.md']).toContain('Read, Grep, Glob');
   });

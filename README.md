@@ -89,19 +89,21 @@ repository, and troubleshooting.
 
 ## Supported today
 
-| Area            | Supported                              | Planned                        |
-| --------------- | -------------------------------------- | ------------------------------ |
-| Hosts           | Claude Code, VS Code agent mode        |                                |
-| Frontend stacks | React Router (framework mode)          | Next.js, Angular, Vue          |
-| Databases       | Postgres on a local host               |                                |
-| Export targets  | Playwright TS, Playwright .NET (NUnit) | Cypress TS, Selenium C#/Java   |
-| Stories         | Text or a Markdown file                | Jira, Azure DevOps (read-only) |
+| Area            | Supported                                                            | Planned                        |
+| --------------- | -------------------------------------------------------------------- | ------------------------------ |
+| Hosts           | Claude Code, VS Code agent mode                                      |                                |
+| Frontend stacks | React Router (framework mode), Angular 14+ (standalone and NgModule) | Next.js, Vue                   |
+| Databases       | Postgres on a local host                                             |                                |
+| Export targets  | Playwright TS, Playwright .NET (NUnit)                               | Cypress TS, Selenium C#/Java   |
+| Stories         | Text or a Markdown file                                              | Jira, Azure DevOps (read-only) |
 
 ## Status and limits
 
 - **No real-project pilot yet.** Tessa has been run end to end against the sample app in
   `testing/sample-app`, mostly by driving its tools directly. The generated host files have not
   yet run inside a real Claude Code or VS Code session. The pilot gates v1.0.0.
+- **The Angular adapter has been tested against fixture apps only**, not yet a real Angular
+  project.
 - **Exports are checked by compiling.** Running each exported test once (`export.validate.run_once`)
   is built but not yet verified.
 - **The Claude Code plugin has not been validated** with `claude plugin validate`.

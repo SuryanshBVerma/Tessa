@@ -6,6 +6,7 @@ import { readGitState } from '../results/env.js';
 import { writeAtomic } from '../runs/store.js';
 import { resolveInside } from '../util/paths.js';
 import { adapterFor } from './adapters/index.js';
+import { aliasCandidates, loadAliases, type Alias } from './aliases.js';
 import { EXTRACTOR_VERSION, extractModule } from './extractors/jsx.js';
 import type { FrontendMap, ModuleInfo, RouteNode } from './types.js';
 
@@ -68,12 +69,18 @@ function toPosix(path: string): string {
   return path.replaceAll('\\', '/');
 }
 
-/** Resolves a relative import to a workspace file in the include set, or null. */
-function resolveImport(from: string, specifier: string, included: Set<string>): string | null {
-  if (!specifier.startsWith('.')) return null;
-  const base = posix.normalize(posix.join(posix.dirname(from), specifier));
+/** Resolves a relative or tsconfig-aliased import to a workspace file in the include set, or null. */
+function resolveImport(
+  from: string,
+  specifier: string,
+  included: Set<string>,
+  aliases: readonly Alias[],
+): string | null {
+  const bases = specifier.startsWith('.')
+    ? [posix.normalize(posix.join(posix.dirname(from), specifier))]
+    : aliasCandidates(aliases, specifier);
   // TypeScript ESM code imports "./x.js" for "./x.ts".
-  const stems = [base, base.replace(/\.(m|c)?js$/, '')];
+  const stems = bases.flatMap((base) => [base, base.replace(/\.(m|c)?js$/, '')]);
   for (const stem of stems) {
     for (const suffix of RESOLVE_SUFFIXES) {
       const candidate = `${stem}${suffix}`;
@@ -118,6 +125,7 @@ export async function buildStaticMap(
       .filter((file) => SOURCE.test(file) && !file.split('/').includes('node_modules')),
   );
 
+  const aliases = loadAliases(ctx.workspace);
   const cachedMap = options.force === true ? null : loadMap(ctx);
   const previous =
     cachedMap !== null &&
@@ -142,6 +150,21 @@ export async function buildStaticMap(
     }
   }
   const seen = new Set<string>();
+  // Files a module's extraction read besides itself (Angular templates), hashed like modules.
+  const readText = (file: string): string | null => {
+    try {
+      const absolute = resolveInside(ctx.workspace, file);
+      if (!existsSync(absolute)) return null;
+      const text = readFileSync(absolute, 'utf8');
+      return text.length > MAX_FILE_BYTES ? null : text;
+    } catch {
+      return null;
+    }
+  };
+  const assetHash = (file: string): string | null => {
+    const text = readText(file);
+    return text === null ? null : sha256(text);
+  };
   while (queue.length > 0) {
     const file = queue.shift();
     if (file === undefined || seen.has(file)) continue;
@@ -157,17 +180,23 @@ export async function buildStaticMap(
     files[file] = hash;
     let info: ModuleInfo;
     const cached = previous?.modules[file];
-    if (cached !== undefined && previous?.files[file] === hash) {
+    const assetsUnchanged = (cached?.assets ?? []).every(
+      (asset) => previous?.files[asset] !== undefined && previous.files[asset] === assetHash(asset),
+    );
+    if (cached !== undefined && previous?.files[file] === hash && assetsUnchanged) {
       info = cached;
       reused++;
     } else {
-      const { importSpecifiers, ...extracted } = extractModule(file, source);
+      const { importSpecifiers, ...extracted } =
+        adapter.extract === undefined
+          ? extractModule(file, source)
+          : adapter.extract(file, source, readText);
       info = {
         ...extracted,
         imports: [
           ...new Set(
             importSpecifiers
-              .map((s) => resolveImport(file, s, included))
+              .map((s) => resolveImport(file, s, included, aliases))
               .filter((s): s is string => s !== null),
           ),
         ],
@@ -175,6 +204,10 @@ export async function buildStaticMap(
       reparsed++;
     }
     modules[file] = info;
+    for (const asset of info.assets ?? []) {
+      const h = assetHash(asset);
+      if (h !== null) files[asset] = h;
+    }
     for (const next of info.imports) if (!seen.has(next)) queue.push(next);
   }
 
@@ -232,6 +265,8 @@ export function routeModules(map: FrontendMap, route: RouteNode): string[] {
   return result;
 }
 
+const ROUTE_HOOKS = new Set(['canActivate', 'canMatch', 'canActivateChild', 'canLoad']);
+
 function md(text: string): string {
   return text.replace(/([\\`*_[\]<>|])/g, '\\$1');
 }
@@ -247,7 +282,13 @@ export function renderMapMarkdown(map: FrontendMap): string {
   ];
   for (const route of map.routes) {
     const info = map.modules[route.file];
-    const guards = [...new Set((info?.guards ?? []).flatMap((g) => g.args))].join(', ');
+    const guards = [
+      ...new Set(
+        [...(route.guards ?? []), ...(info?.guards ?? [])].flatMap((g) =>
+          g.args.length > 0 ? g.args : ROUTE_HOOKS.has(g.in) ? [g.call] : [],
+        ),
+      ),
+    ].join(', ');
     const testids = (info?.selectors ?? []).filter((s) => s.kind === 'testid').length;
     lines.push(
       `| \`${route.path}\` | ${route.kind} | \`${route.file}\` | ${md(guards) || '—'} | ${String(testids)} |`,

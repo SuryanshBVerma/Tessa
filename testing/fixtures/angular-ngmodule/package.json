@@ -1,0 +1,9 @@
+{
+  "name": "angular-ngmodule-fixture",
+  "private": true,
+  "description": "Source-only fixture for Tessa's Angular adapter tests (NgModule routing). Never installed or run.",
+  "dependencies": {
+    "@angular/core": "^17.0.0",
+    "@angular/router": "^17.0.0"
+  }
+}
